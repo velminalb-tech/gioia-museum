@@ -238,7 +238,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     alpha: false,
     powerPreference: "high-performance"
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.65 : 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.2 : 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1478,7 +1478,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
      Atmosphere · dust and petals
      ------------------------------------------------------------ */
 
-  const dustCount = isMobile ? 190 : 430;
+  const dustCount = isMobile ? 120 : 430;
   const dustGeometry = new THREE.BufferGeometry();
   const dustPositions = new Float32Array(dustCount * 3);
   for (let i = 0; i < dustCount; i += 1) {
@@ -1499,7 +1499,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   }));
   scene.add(dust);
 
-  const petalCount = isMobile ? 45 : 100;
+  const petalCount = isMobile ? 30 : 100;
   const petalGeometry = new THREE.BufferGeometry();
   const petalPositions = new Float32Array(petalCount * 3);
   const petalSpeeds = new Float32Array(petalCount);
@@ -1619,7 +1619,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 760 ? 1.65 : 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 760 ? 1.2 : 2));
     if (active) rebuildPath();
   }
 

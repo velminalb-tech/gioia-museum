@@ -500,6 +500,8 @@ function scheduleMuseumUI() {
    ------------------------------------------------------------ */
 
 function setupScroll() {
+  // Native scrolling is smoother and lighter on touch devices than Lenis.
+  if (window.matchMedia("(max-width: 760px)").matches) return;
   if (state.reducedMotion || !window.Lenis) return;
   state.lenis = new window.Lenis({
     lerp: 0.1,
