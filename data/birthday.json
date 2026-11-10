@@ -10,7 +10,7 @@
     "birthdayTimeDisplay": "12:00 AM · Manila time",
     "password": "love",
     "passwordHint": "It's the name I call you when it's just us. Four letters.",
-    "devPreview": false,
+    "devPreview": true,
     "developerNote": "devPreview is off for sharing. Set it to true temporarily to preview the museum before the birthday, then set it back to false. To change the password, edit the password field above. This is a decorative gate, not real security."
   },
 

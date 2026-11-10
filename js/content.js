@@ -20,7 +20,7 @@ const DEFAULTS = {
       birthdayTimeDisplay: "12:00 AM · Manila time",
       password: "love",
       passwordHint: "It's the name I call you when it's just us. Four letters.",
-      devPreview: false
+      devPreview: true
     },
     login: {
       kicker: "A private exhibition · for one",
