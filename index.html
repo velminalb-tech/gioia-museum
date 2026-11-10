@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1b1210">
+  <meta name="description" content="The Gioia Museum — a little museum dedicated to my favorite person.">
+  <meta property="og:title" content="The Gioia Museum">
+  <meta property="og:description" content="A little museum dedicated to my favorite person.">
+  <meta property="og:type" content="website">
+
+  <title>The Gioia Museum</title>
+
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body class="is-loading">
+
+  <a class="skip-link" href="#museum">Skip to the museum</a>
+
+  <!-- The 3D world -->
+  <canvas id="webgl" aria-hidden="true"></canvas>
+  <div class="scene-fallback" aria-hidden="true">
+    <div class="scene-fallback__hall"></div>
+    <div class="scene-fallback__glow"></div>
+    <div class="scene-fallback__dust"></div>
+  </div>
+  <div class="light-rays" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="ambient-vignette" aria-hidden="true"></div>
+  <div class="ambient-grain" aria-hidden="true"></div>
+
+  <!-- Loading -->
+  <div class="loader" id="loader" role="status" aria-live="polite">
+    <div class="loader__inner">
+      <div class="loader__crest" aria-hidden="true">✦</div>
+      <p class="loader__kicker">The Gioia Museum</p>
+      <div class="loader__bar"><span id="loader-bar"></span></div>
+      <p class="loader__text" id="loader-text">Preparing the rooms…</p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       STATE A · LOGIN
+  ============================================================ -->
+  <section class="screen screen--login" id="screen-login" aria-labelledby="login-title" hidden>
+    <div class="login__halo" aria-hidden="true"></div>
+    <div class="login">
+
+      <header class="login__brand">
+        <p class="eyebrow eyebrow--gold" data-copy="login.kicker">A private exhibition · for one</p>
+        <h1 class="login__title" id="login-title"><span>The</span> <em>Gioia</em> <span>Museum</span></h1>
+        <p class="login__subtitle" data-copy="login.subtitle">A little museum dedicated to my favorite person.</p>
+      </header>
+
+      <form class="glass-card login__card" id="login-form" novalidate>
+        <div class="login__card-top">
+          <span data-copy="login.cardKicker">Private view</span>
+          <span>No. 01</span>
+        </div>
+
+        <p class="login__prompt" data-copy="login.prompt">If you're Gioia, you already know the word.</p>
+
+        <label class="field-label" for="password" data-copy="login.fieldLabel">The word</label>
+        <div class="input-wrap">
+          <input
+            id="password"
+            name="password"
+            type="password"
+            inputmode="text"
+            autocomplete="current-password"
+            spellcheck="false"
+            placeholder="What I call you"
+            aria-describedby="login-error login-hint"
+          >
+          <button class="input-wrap__reveal" id="reveal-password" type="button" aria-label="Show password" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.2 12S5.8 5.7 12 5.7 21.8 12 21.8 12 18.2 18.3 12 18.3 2.2 12 2.2 12Z"/><circle cx="12" cy="12" r="3.1"/></svg>
+          </button>
+        </div>
+
+        <p class="login__error" id="login-error" role="alert" aria-live="polite"></p>
+
+        <button class="btn btn--gold login__submit" type="submit">
+          <span data-copy="login.button">Enter the museum</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg>
+        </button>
+
+        <div class="login__clue">
+          <button class="linkish" id="hint-toggle" type="button" aria-expanded="false" aria-controls="login-hint">
+            <span data-copy="login.hintToggle">Need a clue?</span>
+          </button>
+          <p class="login__hint" id="login-hint" hidden></p>
+        </div>
+
+        <p class="login__note" data-copy="login.note">A little world, not an account. Your word stays in your browser.</p>
+      </form>
+
+      <p class="login__footer" data-copy="login.footer">Made by hand, with far too much love.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       STATE A · COUNTDOWN
+  ============================================================ -->
+  <section class="screen screen--countdown" id="screen-countdown" aria-labelledby="countdown-heading" hidden>
+    <div class="countdown__halo" aria-hidden="true"></div>
+
+    <div class="countdown__inner">
+      <p class="eyebrow eyebrow--gold" data-copy="countdown.label">The doors open in</p>
+      <h2 class="countdown__heading" id="countdown-heading" data-copy="countdown.heading">Something special is waiting for you, Love.</h2>
+      <p class="countdown__support" data-copy="countdown.supporting">The museum is preparing its doors for its most special visitor.</p>
+
+      <div class="countdown__clock" role="timer" aria-label="Countdown to November 15, 2026">
+        <div class="countdown__unit"><span id="cd-days">00</span><small>Days</small></div>
+        <span class="countdown__colon" aria-hidden="true">:</span>
+        <div class="countdown__unit"><span id="cd-hours">00</span><small>Hours</small></div>
+        <span class="countdown__colon" aria-hidden="true">:</span>
+        <div class="countdown__unit"><span id="cd-minutes">00</span><small>Minutes</small></div>
+        <span class="countdown__colon" aria-hidden="true">:</span>
+        <div class="countdown__unit"><span id="cd-seconds">00</span><small>Seconds</small></div>
+      </div>
+
+      <p class="countdown__date"><i aria-hidden="true">✦</i> <span data-copy="countdown.dateNote">November 15, 2026 · 12:00 AM · Manila time</span></p>
+      <p class="countdown__note" data-copy="countdown.lockedNote">Until then, the frames are being straightened, the lights are being warmed, and the last letter is still being written.</p>
+      <p class="countdown__early" data-copy="countdown.earlyNote">The countdown is real. No peeking — unless you find the little star.</p>
+    </div>
+
+    <!-- Discreet developer preview trigger (only rendered when enabled in data/birthday.json) -->
+    <button class="preview-star" id="preview-star" type="button" hidden aria-label="Preview the museum (developer)" title="Preview the museum">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l1.9 5.8 6.1.1-4.9 3.7 1.8 5.9-4.9-3.6-4.9 3.6 1.8-5.9L4 8.5l6.1-.1L12 2.6Z"/></svg>
+    </button>
+    <p class="countdown__corner">A private exhibition</p>
+  </section>
+
+  <!-- ============================================================
+       UNLOCKING SEQUENCE + FIRST BIRTHDAY GREETING
+  ============================================================ -->
+  <section class="screen screen--unlock" id="screen-unlock" aria-labelledby="unlock-heading" hidden>
+    <div class="unlock__doors" aria-hidden="true">
+      <div class="unlock__door unlock__door--left"></div>
+      <div class="unlock__door unlock__door--right"></div>
+      <div class="unlock__light"></div>
+    </div>
+
+    <div class="unlock__balloons" aria-hidden="true">
+      <i></i><i></i><i></i><i></i><i></i><i></i>
+    </div>
+    <div class="unlock__content">
+      <p class="eyebrow eyebrow--gold" id="unlock-kicker">November 15 · The doors are open</p>
+      <h2 class="unlock__heading" id="unlock-heading">Happy Birthday, Love!</h2>
+      <div class="unlock__message" id="unlock-message"></div>
+      <button class="btn btn--gold btn--large" id="enter-museum" type="button">
+        <span data-copy="unlock.button">Enter Your Museum</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg>
+      </button>
+      <p class="unlock__note" id="unlock-note">Headphones make it better. Take your time in here.</p>
+    </div>
+
+    <div class="preview-badge" id="preview-badge" hidden>
+      <span><i aria-hidden="true"></i> Preview mode</span>
+      <button type="button" id="exit-preview">Exit preview</button>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       STATE B · THE MUSEUM
+  ============================================================ -->
+  <main class="museum" id="museum" tabindex="-1" hidden>
+
+    <header class="museum-bar" id="museum-bar">
+      <button class="museum-bar__brand" id="brand-home" type="button" aria-label="Return to the entrance">
+        <span aria-hidden="true">✦</span> The Gioia Museum
+      </button>
+
+      <div class="museum-bar__current" aria-live="polite">
+        <span class="museum-bar__roman" id="current-roman">I</span>
+        <span class="museum-bar__name" id="current-title">The Gallery of Her</span>
+      </div>
+
+      <div class="museum-bar__progress" aria-label="Museum progress">
+        <div class="museum-bar__meta">
+          <span id="progress-label">Explored</span>
+          <span id="progress-count">0 / 6</span>
+        </div>
+        <div class="museum-bar__track"><span id="progress-fill"></span></div>
+      </div>
+    </header>
+
+    <div class="museum-scroll" id="museum-scroll">
+
+      <!-- EXHIBIT 01 -->
+      <section class="chapter chapter--gallery" id="chapter-gallery" data-chapter="gallery" data-index="0">
+        <div class="chapter__stage">
+          <aside class="exhibit-panel" data-exhibit-panel data-panel-id="gallery" aria-label="About the Gallery of Her">
+            <button class="exhibit-panel__toggle" type="button" aria-expanded="true" aria-label="Minimize exhibit information">
+              <span class="exhibit-panel__toggle-icon" aria-hidden="true">
+                <span class="exhibit-panel__icon-info">i</span>
+                <span class="exhibit-panel__icon-close">×</span>
+              </span>
+              <span class="exhibit-panel__toggle-label" data-panel-short>Exhibit I</span>
+            </button>
+            <div class="exhibit-panel__body" data-panel-body>
+              <p class="exhibit-panel__kicker"><i aria-hidden="true">◆</i> <span data-exhibit-label>Exhibit 01</span></p>
+              <h2 class="exhibit-panel__title" data-exhibit-title>The Gallery of Her</h2>
+              <p class="exhibit-panel__lede" data-exhibit-lede></p>
+              <p class="exhibit-panel__hint" data-exhibit-hint></p>
+              <div class="exhibit-panel__index" data-panel-index hidden></div>
+            </div>
+          </aside>
+          <button class="wish-star wish-star--a" data-star="0" type="button" aria-label="A tiny star with a message">✦</button>
+          <button class="wish-star wish-star--b" data-star="1" type="button" aria-label="A tiny star with a message">✧</button>
+          <p class="chapter__note" data-exhibit-note></p>
+        </div>
+      </section>
+
+      <!-- EXHIBIT 02 -->
+      <section class="chapter chapter--favorites" id="chapter-favorites" data-chapter="favorites" data-index="1">
+        <div class="chapter__stage">
+          <aside class="exhibit-panel" data-exhibit-panel data-panel-id="favorites" aria-label="About Little Things About You">
+            <button class="exhibit-panel__toggle" type="button" aria-expanded="true" aria-label="Minimize exhibit information">
+              <span class="exhibit-panel__toggle-icon" aria-hidden="true">
+                <span class="exhibit-panel__icon-info">i</span>
+                <span class="exhibit-panel__icon-close">×</span>
+              </span>
+              <span class="exhibit-panel__toggle-label" data-panel-short>Exhibit II</span>
+            </button>
+            <div class="exhibit-panel__body" data-panel-body>
+              <p class="exhibit-panel__kicker"><i aria-hidden="true">◆</i> <span data-exhibit-label>Exhibit 02</span></p>
+              <h2 class="exhibit-panel__title" data-exhibit-title>Little Things About You</h2>
+              <p class="exhibit-panel__lede" data-exhibit-lede></p>
+              <p class="exhibit-panel__hint" data-exhibit-hint></p>
+              <div class="exhibit-panel__index" data-panel-index hidden></div>
+            </div>
+          </aside>
+          <button class="wish-star wish-star--c" data-star="2" type="button" aria-label="A tiny star with a message">✦</button>
+        </div>
+      </section>
+
+      <!-- EXHIBIT 03 -->
+      <section class="chapter chapter--memories" id="chapter-memories" data-chapter="memories" data-index="2">
+        <div class="chapter__stage">
+          <aside class="exhibit-panel" data-exhibit-panel data-panel-id="memories" aria-label="About the Memory Hall">
+            <button class="exhibit-panel__toggle" type="button" aria-expanded="true" aria-label="Minimize exhibit information">
+              <span class="exhibit-panel__toggle-icon" aria-hidden="true">
+                <span class="exhibit-panel__icon-info">i</span>
+                <span class="exhibit-panel__icon-close">×</span>
+              </span>
+              <span class="exhibit-panel__toggle-label" data-panel-short>Exhibit III</span>
+            </button>
+            <div class="exhibit-panel__body" data-panel-body>
+              <p class="exhibit-panel__kicker"><i aria-hidden="true">◆</i> <span data-exhibit-label>Exhibit 03</span></p>
+              <h2 class="exhibit-panel__title" data-exhibit-title>The Memory Hall</h2>
+              <p class="exhibit-panel__lede" data-exhibit-lede></p>
+              <p class="exhibit-panel__hint" data-exhibit-hint></p>
+              <div class="exhibit-panel__index" data-panel-index hidden></div>
+            </div>
+          </aside>
+          <button class="wish-star wish-star--d" data-star="3" type="button" aria-label="A tiny star with a message">✧</button>
+        </div>
+      </section>
+
+      <!-- EXHIBIT 04 -->
+      <section class="chapter chapter--letters" id="chapter-letters" data-chapter="letters" data-index="3">
+        <div class="chapter__stage">
+          <aside class="exhibit-panel" data-exhibit-panel data-panel-id="letters" aria-label="About Letters for You">
+            <button class="exhibit-panel__toggle" type="button" aria-expanded="true" aria-label="Minimize exhibit information">
+              <span class="exhibit-panel__toggle-icon" aria-hidden="true">
+                <span class="exhibit-panel__icon-info">i</span>
+                <span class="exhibit-panel__icon-close">×</span>
+              </span>
+              <span class="exhibit-panel__toggle-label" data-panel-short>Exhibit IV</span>
+            </button>
+            <div class="exhibit-panel__body" data-panel-body>
+              <p class="exhibit-panel__kicker"><i aria-hidden="true">◆</i> <span data-exhibit-label>Exhibit 04</span></p>
+              <h2 class="exhibit-panel__title" data-exhibit-title>Letters for You</h2>
+              <p class="exhibit-panel__lede" data-exhibit-lede></p>
+              <p class="exhibit-panel__hint" data-exhibit-hint></p>
+              <div class="exhibit-panel__index" data-panel-index hidden></div>
+            </div>
+          </aside>
+          <button class="wish-star wish-star--e" data-star="4" type="button" aria-label="A tiny star with a message">✦</button>
+        </div>
+      </section>
+
+      <!-- EXHIBIT 05 -->
+      <section class="chapter chapter--celebration" id="chapter-celebration" data-chapter="celebration" data-index="4">
+        <div class="chapter__stage">
+          <button class="wish-star wish-star--f" data-star="5" type="button" aria-label="A tiny star with a message">✦</button>
+        </div>
+      </section>
+
+      <div class="cake-controls" id="cake-controls" aria-label="Celebration controls" hidden>
+        <button class="btn btn--gold" id="wish-button" type="button">Make a wish</button>
+        <button class="btn btn--soft" id="candles-button" type="button">Blow out the candles <span id="candle-count">· 5 left</span></button>
+        <button class="btn btn--ghost gift-hint" id="gift-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-2.6 0-4-1-4-2.5S9.4 2.5 10.4 3C11.5 3.5 12 5 12 7Zm0 0c2.6 0 4-1 4-2.5S14.6 2.5 13.6 3 12 5 12 7Z"/></svg>
+          <span>Open the little gift</span>
+        </button>
+      </div>
+
+      <!-- EXHIBIT 06 -->
+      <section class="chapter chapter--final" id="chapter-final" data-chapter="final" data-index="5">
+        <div class="chapter__stage chapter__stage--final">
+          <div class="final-cinema">
+            <p class="final-cinema__kicker"><i aria-hidden="true">◆</i> <span data-exhibit-label>Exhibit 06</span></p>
+            <h2 class="final-cinema__title" data-exhibit-title>And that's my favorite exhibit.</h2>
+            <p class="final-cinema__lede" data-exhibit-lede>Because at the end of the day, this whole little museum exists because of you.</p>
+
+            <div class="final-letter" id="final-letter"></div>
+
+            <p class="final-closing" id="final-closing">Happy Birthday, Love. I love you.</p>
+            <p class="final-signoff" id="final-signoff">Always, in every room,</p>
+
+            <div class="final-actions">
+              <button class="btn btn--gold" id="replay-button" type="button">Walk through again</button>
+              <button class="btn btn--ghost" id="doors-button" type="button">Back to the entrance</button>
+              <button class="btn btn--soft" id="surprise-button" type="button">One Last Surprise</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="float-layer" id="float-layer" aria-label="Museum labels"></div>
+
+    <div class="scroll-cue" id="scroll-cue" aria-hidden="true">
+      <span>Scroll slowly</span>
+      <i></i>
+    </div>
+
+    <div class="preview-chip" id="preview-chip" hidden>
+      <span><i aria-hidden="true"></i> Preview mode</span>
+      <button type="button" data-exit-preview>Exit</button>
+    </div>
+
+    <aside class="music-dock" id="music-dock" aria-label="Museum soundtrack" hidden>
+      <button class="music-dock__toggle" id="music-toggle" type="button" aria-label="Play Panata by Tothapi" aria-pressed="false">
+        <span class="music-dock__play" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5-11-6.5Z"/></svg>
+        </span>
+        <span class="music-dock__pause" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM14 5h4v14h-4z"/></svg>
+        </span>
+        <span class="music-dock__eq" aria-hidden="true"><i></i><i></i><i></i></span>
+      </button>
+
+      <div class="music-dock__meta">
+        <span class="music-dock__eyebrow" id="music-status">The museum soundtrack</span>
+        <strong id="music-title">Panata</strong>
+        <span id="music-artist">Tothapi</span>
+      </div>
+
+      <button class="music-dock__icon-btn" id="music-mute" type="button" aria-label="Mute music" aria-pressed="false">
+        <svg class="music-dock__vol" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM17 8.5a5 5 0 010 7M19.5 6a8.5 8.5 0 010 12"/></svg>
+        <svg class="music-dock__muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6"/></svg>
+      </button>
+
+      <a class="music-dock__icon-btn music-dock__spotify" id="music-spotify" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer" aria-label="Listen on Spotify" title="Listen on Spotify">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M7.3 9.4c3.2-.9 6.5-.4 9.4 1.2M7.9 12.4c2.6-.7 5.4-.3 7.8 1M8.4 15.2c2-.5 4.2-.2 6 .8"/></svg>
+      </a>
+    </aside>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal" id="modal" hidden aria-hidden="true">
+    <button class="modal__backdrop" type="button" data-close-modal tabindex="-1" aria-label="Close"></button>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal__close" id="modal-close" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="modal__body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+
+  <noscript>
+    <div class="noscript">This museum needs JavaScript to open its doors. Please enable it and refresh.</div>
+  </noscript>
+
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/ScrollTrigger.min.js"></script>
+  <script src="vendor/lenis.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

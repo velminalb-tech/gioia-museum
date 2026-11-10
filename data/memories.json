@@ -1,0 +1,40 @@
+{
+  "section": {
+    "roman": "III",
+    "label": "Exhibit 03",
+    "title": "The Memory Hall",
+    "lede": "A long corridor of moments I kept. Some are big. Most are small. All of them are yours.",
+    "hint": "Walk slowly. Click a frame to stay in the moment a little longer.",
+    "note": "The museum is still collecting."
+  },
+  "memories": [
+    {
+      "image": "assets/images/memories/memory-01.jpg",
+      "title": "The Little You",
+      "date": "A long time ago",
+      "caption": "You might not love this photo, but I really do. It's you, before the world got to you.",
+      "message": "I know you might not be your biggest fan in this picture, but I am. This little version of you is where everything started, and I love her for becoming the woman I adore. You were already you, even then."
+    },
+    {
+      "image": "assets/images/memories/memory-02.jpg",
+      "title": "Growing Into You",
+      "date": "Somewhere along the way",
+      "caption": "Every year added something beautiful.",
+      "message": "This is you becoming yourself. Not perfect, not trying to be — just growing, learning, and becoming the person I fell for. I wouldn't change a single chapter."
+    },
+    {
+      "image": "assets/images/memories/memory-03.jpg",
+      "title": "Us",
+      "date": "Our story",
+      "caption": "The two of us, in one frame.",
+      "message": "This is one of my favorite moments of us. Not because it was a big occasion, but because it was just you and me, being together. I hope there are a hundred more like this."
+    },
+    {
+      "image": "assets/images/memories/memory-04.jpg",
+      "title": "The Family That Loves You",
+      "date": "Always",
+      "caption": "Insert your whole family that loves you.",
+      "message": "This is the family that loves you. Not every member could fit in this single photo, so think of this frame as a doorway to all of them. They're part of the reason you are who you are, and I'm grateful for every one of them. You were loved long before I met you, and you'll be loved long after — but I'm glad I get to be part of that story now."
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "section": {
+    "roman": "IV",
+    "label": "Exhibit 04",
+    "title": "Letters for You",
+    "lede": "I'm better at writing things down than saying them out loud. So I left a few letters here. Open whichever one you need.",
+    "hint": "Click an envelope. They're not going anywhere.",
+    "note": "Some are for today. Some are for the days after."
+  },
+  "letters": [
+    {
+      "id": "notice",
+      "seal": "Open when you want to know what I see",
+      "title": "The Things I Notice",
+      "subtitle": "A letter about the small things",
+      "body": [
+        "I don't think you realize how much of you I keep track of. The way you get quiet right before you say something you've been thinking about for a while. The little happy sound you make when the fries arrive. The way you say my name when you're tired.",
+        "I notice all of it. I don't always say so, because I'm bad at saying things out loud without making them sound smaller than they are. So this is me saying it plainly: you are very, very easy to love.",
+        "Not because you're perfect. Because you're you, and that turns out to be more than enough."
+      ],
+      "signoff": "Yours, in the noticing,"
+    },
+    {
+      "id": "down",
+      "seal": "Open on a heavy day",
+      "title": "For the Days You Forget",
+      "subtitle": "A reminder, for when your brain is being unkind",
+      "body": [
+        "I wish I could stand in front of you on the days you're too hard on yourself and hold up a mirror that only shows what I see. You'd see someone kind, funny, stubborn in the best way, and so much more than whatever your brain is telling you at 2 a.m.",
+        "You don't have to be useful or cheerful or put together to be worth loving. You just have to be you. That's the whole requirement.",
+        "I'm not going anywhere. You can put this letter in your pocket and read it again whenever you need to."
+      ],
+      "signoff": "Here, always,"
+    },
+    {
+      "id": "birthday",
+      "seal": "Open today",
+      "title": "Happy Birthday, Love",
+      "subtitle": "The one I've been saving for November 15",
+      "body": [
+        "I hope this year is gentle with you. I hope it brings the kind of days where you laugh until you can't breathe, where the fries are hot, where the shrimp is garlicky enough, where you fall asleep before you finish your show.",
+        "I hope I get to be there for a lot of it. And on the days I can't fix anything, I hope it's enough that I'm beside you while you figure it out.",
+        "Thank you for being born. Genuinely. The world got a lot better for me when you did."
+      ],
+      "signoff": "Happy birthday, my love,"
+    },
+    {
+      "id": "five",
+      "seal": "Open if you want to smile",
+      "title": "Five Things, No Particular Order",
+      "subtitle": "Because you asked me once and I froze",
+      "body": [
+        "Five things I love about you, in no particular order because they all take turns being my favorite:",
+        "1. The face you make when you're trying not to laugh. 2. How fiercely you care about the people you love. 3. Your taste in music — I stole Panata from you, and I'm not sorry. 4. How you turn a normal afternoon into something I want to remember. 5. The way you say my name. You can put that on my headstone.",
+        "There are about four hundred more, but this museum has a word limit and I have a reputation to protect."
+      ],
+      "signoff": "Yours, obviously,"
+    },
+    {
+      "id": "promise",
+      "seal": "Open when you need to believe me",
+      "title": "A Small Promise",
+      "subtitle": "My panata",
+      "body": [
+        "I'm not going to promise you a life without hard days. That would be a lie, and you deserve better than a nice-sounding lie.",
+        "What I can promise is this: I'll stay. Through the boring parts, the confusing parts, the versions of us we haven't met yet. I'll keep choosing you on purpose, even when it's easy, especially when it isn't.",
+        "That's my panata. Yesterday, today, and after."
+      ],
+      "signoff": "Still choosing you,"
+    }
+  ]
+}

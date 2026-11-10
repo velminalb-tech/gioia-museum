@@ -1,0 +1,40 @@
+{
+  "section": {
+    "roman": "I",
+    "label": "Exhibit 01",
+    "title": "The Gallery of Her",
+    "lede": "Every wall in this room is just an excuse to look at you a little longer. Some of these are my favorite versions. Some are just you, being you.",
+    "hint": "Click a frame — or a name below — to look closer.",
+    "note": "A small collection, still growing."
+  },
+  "photos": [
+    {
+      "image": "assets/images/gallery/photo-01.jpg",
+      "title": "The Smile I Keep Coming Back To",
+      "caption": "You didn't know I was looking. That's usually when you're most you.",
+      "date": "",
+      "message": "There's a version of you in this photo that I wish you could see from where I'm standing. Soft, happy, completely unaware of how pretty you are. I keep coming back to it on days I miss you."
+    },
+    {
+      "image": "assets/images/gallery/photo-02.jpg",
+      "title": "A Quiet Kind of Beautiful",
+      "caption": "No big moment. Just you, existing. Somehow that's enough.",
+      "date": "",
+      "message": "I like the ordinary pictures best. The ones where you're not posing or waiting for the camera. They're the closest thing I have to sitting beside you on a normal day."
+    },
+    {
+      "image": "assets/images/gallery/photo-03.jpg",
+      "title": "The Version of You I Adore",
+      "caption": "Every angle, every expression — all of them are you.",
+      "date": "",
+      "message": "This is one of my favorite versions of you. Not because you tried to look a certain way, but because you simply let yourself be. That is more than enough."
+    },
+    {
+      "image": "assets/images/gallery/photo-04.jpg",
+      "title": "The Girl Who Stole My Heart",
+      "caption": "Still my favorite person to look at.",
+      "date": "",
+      "message": "I could fill a whole museum with photos of you and still want more. This frame is for another one of the countless reasons I love you."
+    }
+  ]
+}

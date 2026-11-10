@@ -1,0 +1,55 @@
+{
+  "stars": [
+    "You are the best thing that ever happened to my camera roll.",
+    "If I had to do it all again, I'd still look for you in the same crowd.",
+    "You make normal days feel like a special occasion.",
+    "The museum has a security policy: no leaving without knowing you're loved.",
+    "I hope you know that you're somebody's favorite person. Mine. Obviously.",
+    "This little star is just here to say: I'm really glad you were born."
+  ],
+  "floatingWishes": [
+    "Happy birthday, Love.",
+    "You are so loved.",
+    "Make a wish.",
+    "This one's for you.",
+    "Always you.",
+    "The best is still ahead."
+  ],
+  "milestone": {
+    "threshold": 5,
+    "kicker": "A note from the curator",
+    "title": "You've seen most of the museum.",
+    "message": "I hope you know by now that none of this is here because I had to. It's here because I wanted to. There's still one room left — the one I was most nervous to build.",
+    "button": "Take me to the last room"
+  },
+  "gift": {
+    "kicker": "You found the little box",
+    "title": "A gift that doesn't fit in a box.",
+    "message": "I owe you a real one. Until then: a day where you don't have to decide anything, a meal that's entirely shrimp, and me, paying attention. Redeemable whenever you want.",
+    "button": "I'll take it"
+  },
+  "cake": {
+    "kicker": "The birthday room",
+    "title": "Make a wish, Love.",
+    "message": "Whatever you wish for, I hope it's the kind of thing that comes true quietly and then stays. And if it's fries, I can probably help with that part.",
+    "button": "Wish made"
+  },
+  "candles": {
+    "kicker": "All five candles, out",
+    "title": "You got them all.",
+    "message": "Officially a year older, officially still the cutest person in this museum. Confetti is only the beginning — happy birthday, Love.",
+    "button": "I feel celebrated"
+  },
+  "final": {
+    "kicker": "Exhibit 06 · The last room",
+    "heading": "And that's my favorite exhibit.",
+    "supporting": "Because at the end of the day, this whole little museum exists because of you.",
+    "letter": [
+      "I built this whole thing because a card felt too small. There's no room on a card for the way you make an ordinary day better, or the sound you make when you're excited, or all the little things I want to say and never do.",
+      "So here it is: a whole museum. Every room is you. Every room is mine because you're in it.",
+      "Thank you for being the person I get to love. I hope this year is kind to you. I hope I get to be there for most of it."
+    ],
+    "closing": "Happy Birthday, Love. I love you.",
+    "signoff": "Always, in every room,"
+  }
+}

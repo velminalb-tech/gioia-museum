@@ -1,0 +1,17 @@
+{
+  "name": "The Gioia Museum",
+  "short_name": "Gioia Museum",
+  "description": "A little museum dedicated to my favorite person.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1b1210",
+  "theme_color": "#1b1210",
+  "icons": [
+    {
+      "src": "assets/icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

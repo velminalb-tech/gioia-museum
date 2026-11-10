@@ -1,0 +1,236 @@
+/* ============================================================
+   THE GIOIA MUSEUM · animations.css
+   ============================================================ */
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+}
+
+@keyframes dustDrift {
+  from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
+  to { background-position: 18% -30%, -12% 22%, 24% -18%, -22% 14%, 8% -22%; }
+}
+
+@keyframes raySway {
+  0%, 100% { opacity: 0.45; transform: rotate(11deg) translateX(-12px); }
+  50% { opacity: 0.8; transform: rotate(14deg) translateX(14px); }
+}
+
+@keyframes grainShift {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-2%, 1%); }
+  40% { transform: translate(1%, -2%); }
+  60% { transform: translate(-1%, 2%); }
+  80% { transform: translate(2%, -1%); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes crestSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes scrollPulse {
+  0%, 100% { transform: scaleY(0.55); opacity: 0.45; transform-origin: top; }
+  50% { transform: scaleY(1); opacity: 1; transform-origin: top; }
+}
+
+@keyframes eqBar {
+  0%, 100% { transform: scaleY(0.28); }
+  35% { transform: scaleY(1); }
+  65% { transform: scaleY(0.5); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes panelRise {
+  from { opacity: 0; transform: translateY(34px) scale(0.985); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@keyframes railIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.975); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes letterIn {
+  from { opacity: 0; transform: translateY(30px) rotateX(8deg) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) rotateX(0) scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  16% { transform: translateX(-7px); }
+  32% { transform: translateX(6px); }
+  48% { transform: translateX(-4px); }
+  64% { transform: translateX(3px); }
+  80% { transform: translateX(-2px); }
+}
+
+@keyframes floatSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(240, 217, 164, 0.15); }
+  50% { box-shadow: 0 0 60px rgba(240, 217, 164, 0.38); }
+}
+
+/* ---------- Login entrance ---------- */
+
+.screen--login.is-ready .login__brand {
+  animation: fadeUp 1.1s var(--ease-out) both 0.15s;
+}
+
+.screen--login.is-ready .login__card {
+  animation: fadeUp 1.1s var(--ease-out) both 0.35s;
+}
+
+.screen--login.is-ready .login__footer {
+  animation: fadeIn 1.4s ease both 0.8s;
+}
+
+.screen--login.is-ready .login__halo {
+  animation: breathe 8s ease-in-out infinite;
+}
+
+.login__card.is-shaking {
+  animation: shake 0.5s var(--ease-soft) both;
+}
+
+/* ---------- Countdown entrance ---------- */
+
+.screen--countdown.is-ready .countdown__inner > * {
+  animation: fadeUp 1s var(--ease-out) both;
+}
+
+.screen--countdown.is-ready .countdown__inner > :nth-child(1) { animation-delay: 0.1s; }
+.screen--countdown.is-ready .countdown__inner > :nth-child(2) { animation-delay: 0.2s; }
+.screen--countdown.is-ready .countdown__inner > :nth-child(3) { animation-delay: 0.3s; }
+.screen--countdown.is-ready .countdown__inner > :nth-child(4) { animation-delay: 0.4s; }
+.screen--countdown.is-ready .countdown__inner > :nth-child(5) { animation-delay: 0.5s; }
+.screen--countdown.is-ready .countdown__inner > :nth-child(6) { animation-delay: 0.6s; }
+.screen--countdown.is-ready .countdown__inner > :nth-child(7) { animation-delay: 0.7s; }
+
+.screen--countdown.is-ready .countdown__halo {
+  animation: breathe 10s ease-in-out infinite;
+}
+
+.screen--countdown.is-ready .countdown__unit span {
+  animation: glowPulse 4s ease-in-out infinite;
+}
+
+/* ---------- Unlock sequence ---------- */
+
+.screen--unlock.is-ready .unlock__heading {
+  animation: fadeUp 1.4s var(--ease-out) both 0.15s;
+}
+
+.screen--unlock.is-ready .unlock__message p {
+  animation: fadeUp 1.2s var(--ease-out) both;
+}
+
+.screen--unlock.is-ready .unlock__message p:nth-child(1) { animation-delay: 0.35s; }
+.screen--unlock.is-ready .unlock__message p:nth-child(2) { animation-delay: 0.55s; }
+.screen--unlock.is-ready .unlock__message p:nth-child(3) { animation-delay: 0.75s; }
+
+.screen--unlock.is-ready #enter-museum {
+  animation: fadeUp 1.2s var(--ease-out) both 1s;
+}
+
+.screen--unlock.is-ready .unlock__note {
+  animation: fadeIn 1.4s ease both 1.3s;
+}
+
+.unlock__heading {
+  animation: glowPulse 5s ease-in-out infinite;
+}
+
+/* ---------- Museum reveals ---------- */
+
+.chapter.is-visible .chapter__panel {
+  animation: panelRise 0.95s var(--ease-out) both;
+}
+
+.chapter.is-visible .chapter__panel--right {
+  animation-delay: 0.06s;
+}
+
+.chapter.is-visible .rail-card {
+  animation: railIn 0.7s var(--ease-out) both;
+}
+
+.chapter.is-visible .rail-card:nth-child(1) { animation-delay: 0.25s; }
+.chapter.is-visible .rail-card:nth-child(2) { animation-delay: 0.32s; }
+.chapter.is-visible .rail-card:nth-child(3) { animation-delay: 0.39s; }
+.chapter.is-visible .rail-card:nth-child(4) { animation-delay: 0.46s; }
+.chapter.is-visible .rail-card:nth-child(5) { animation-delay: 0.53s; }
+.chapter.is-visible .rail-card:nth-child(6) { animation-delay: 0.6s; }
+
+.chapter.is-visible .wish-star {
+  animation: fadeIn 1.4s ease both 0.8s, twinkle 4.5s ease-in-out infinite 1.6s;
+}
+
+.chapter.is-visible .chapter__counter {
+  animation: fadeIn 1.4s ease both 0.9s;
+}
+
+/* Letters get a slightly slower unfold */
+.chapter--letters.is-visible .chapter__panel {
+  animation-duration: 1.15s;
+}
+
+/* Final room extra softness */
+.chapter--final.is-visible .chapter__panel {
+  animation-duration: 1.25s;
+}
+
+/* ---------- Music dock ---------- */
+
+.music-dock.is-playing .music-dock__toggle {
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .light-rays,
+  .ambient-grain {
+    display: none;
+  }
+
+  .countdown__unit span,
+  .unlock__heading {
+    animation: none !important;
+    filter: none;
+  }
+}

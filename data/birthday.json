@@ -1,0 +1,91 @@
+{
+  "site": {
+    "title": "The Gioia Museum",
+    "subtitle": "A little museum dedicated to my favorite person.",
+    "recipient": "Gioia",
+    "nickname": "Love",
+    "timezone": "Asia/Manila",
+    "birthdayIso": "2026-11-15T00:00:00+08:00",
+    "birthdayDisplay": "November 15, 2026",
+    "birthdayTimeDisplay": "12:00 AM · Manila time",
+    "password": "love",
+    "passwordHint": "It's the name I call you when it's just us. Four letters.",
+    "devPreview": false,
+    "developerNote": "devPreview is off for sharing. Set it to true temporarily to preview the museum before the birthday, then set it back to false. To change the password, edit the password field above. This is a decorative gate, not real security."
+  },
+
+  "login": {
+    "kicker": "A private exhibition · for one",
+    "title": "The Gioia Museum",
+    "subtitle": "A little museum dedicated to my favorite person.",
+    "cardKicker": "Private view",
+    "prompt": "If you're Gioia, you already know the word.",
+    "fieldLabel": "The word",
+    "placeholder": "What I call you",
+    "button": "Enter the museum",
+    "error": "Not quite. Think of the name I call you when it's just us.",
+    "hintToggle": "Need a clue?",
+    "footer": "Made by hand, with far too much love.",
+    "note": "A little world, not an account. Your word stays in your browser."
+  },
+
+  "countdown": {
+    "heading": "Something special is waiting for you, Love.",
+    "supporting": "The museum is preparing its doors for its most special visitor.",
+    "label": "The doors open in",
+    "dateNote": "November 15, 2026 · 12:00 AM · Manila time",
+    "lockedNote": "Until then, the frames are being straightened, the lights are being warmed, and the last letter is still being written.",
+    "earlyNote": "The countdown is real. The museum opens the moment the clock does.",
+    "unlockedHeading": "The doors are open, Love."
+  },
+
+  "unlock": {
+    "kicker": "November 15 · The doors are open",
+    "heading": "Happy Birthday, Love!",
+    "paragraphs": [
+      "Today is all about you. I wanted to make something a little different — something you could walk through, poke at, and keep coming back to. Something that would remind you how special you are to me.",
+      "So, welcome to your very own little museum. Every corner holds something I wanted to share with you. Every exhibit is here because it reminded me of you.",
+      "Happy birthday, my love."
+    ],
+    "button": "Enter Your Museum",
+    "songNote": "Headphones make it better. Take your time in here.",
+    "previewNote": "Preview mode — the real countdown is untouched."
+  },
+
+  "museum": {
+    "barLabel": "A private exhibition",
+    "enterHint": "Scroll slowly. The museum moves with you.",
+    "progressLabel": "explored",
+    "replay": "Walk through again",
+    "backToDoors": "Back to the entrance",
+    "milestoneButton": "Keep going",
+    "celebration": {
+      "lede": "There's cake, obviously. And a few small things to open. This is the loud, happy part of the museum — the part where I get to celebrate you out loud.",
+      "hint": "Click the cake, blow out the candles, or open the little box.",
+      "note": "Please make a wish. I have a good feeling about this one."
+    },
+    "final": {
+      "lede": "Because at the end of the day, this whole little museum exists because of you.",
+      "hint": ""
+    },
+    "chapters": [
+      { "id": "gallery", "roman": "I", "nav": "The Gallery of Her" },
+      { "id": "favorites", "roman": "II", "nav": "Little Things" },
+      { "id": "memories", "roman": "III", "nav": "The Memory Hall" },
+      { "id": "letters", "roman": "IV", "nav": "Letters for You" },
+      { "id": "celebration", "roman": "V", "nav": "The Celebration Room" },
+      { "id": "final", "roman": "VI", "nav": "The Final Room" }
+    ]
+  },
+
+  "music": {
+    "title": "Panata",
+    "artist": "Tothapi",
+    "file": "assets/audio/panata-by-tothapi.mp3",
+    "youtubeVideoId": "K7QloSPisLg",
+    "youtubeStart": 10,
+    "spotify": "https://open.spotify.com/track/5o5rOj568TLbuwXvwA9WIZ",
+    "note": "Set music.youtubeVideoId to a YouTube video ID to play the song in the museum. The local file and Spotify link remain as fallbacks.",
+    "unavailable": "The song isn't available in this browser. You can still listen to it on Spotify — it's your song either way."
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "section": {
+    "roman": "II",
+    "label": "Exhibit 02",
+    "title": "Little Things About You",
+    "lede": "Not every exhibit has to be profound. Some of them are just the things that make you light up. These four are on the permanent collection.",
+    "hint": "Tap a pedestal — or a little card below — to peek.",
+    "note": "The most important food groups, according to Gioia."
+  },
+  "items": [
+    {
+      "name": "French Fries",
+      "emoji": "🍟",
+      "label": "The Side Order",
+      "image": "",
+      "message": "You get this little look when the fries arrive. I notice it every single time. It's one of my favorite things about taking you out.",
+      "note": "Best enjoyed hot, shared reluctantly."
+    },
+    {
+      "name": "Shrimp",
+      "emoji": "🍤",
+      "label": "The Main Event",
+      "image": "",
+      "message": "You'd choose shrimp over almost anything, and honestly, I respect it. This exhibit exists because your happiness is very often garlic-butter-shaped.",
+      "note": "Garlic butter strongly recommended."
+    },
+    {
+      "name": "Oishi Potato Chips",
+      "emoji": "🥔",
+      "label": "The Snack Shelf",
+      "image": "",
+      "message": "The humble potato chip. You'd share the bag with me but pretend you wouldn't. I'm putting that on the record.",
+      "note": "Crinkle cut. Obviously."
+    },
+    {
+      "name": "Pasta",
+      "emoji": "🍝",
+      "label": "The Comfort Bowl",
+      "image": "assets/images/favorites/pasta.png",
+      "message": "Pasta is your reset button. A good bowl of it can fix a bad day, and I love being the one who gets to sit across from you while you eat it.",
+      "note": "Best served warm, with company."
+    }
+  ]
+}
