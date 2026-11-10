@@ -2767,6 +2767,7 @@ body::-webkit-scrollbar,
 /* ---------- Compact exhibit information panels ---------- */
 
 .exhibit-panel {
+  pointer-events: none;
   position: absolute;
   left: clamp(1rem, 3vw, 2.6rem);
   bottom: clamp(4.8rem, 9vh, 7rem);
@@ -2779,8 +2780,8 @@ body::-webkit-scrollbar,
   background:
     linear-gradient(158deg, rgba(18, 11, 9, 0.8), rgba(18, 11, 9, 0.56) 70%, rgba(18, 11, 9, 0.68));
   box-shadow: 0 26px 70px -34px rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(16px) saturate(112%);
-  -webkit-backdrop-filter: blur(16px) saturate(112%);
+  backdrop-filter: blur(8px) saturate(110%);
+  -webkit-backdrop-filter: blur(8px) saturate(110%);
   color: var(--cream-65);
   pointer-events: auto;
   transition:
@@ -2799,6 +2800,14 @@ body::-webkit-scrollbar,
   max-width: min(230px, calc(100vw - 2rem));
   border-radius: 999px;
   background: rgba(18, 11, 9, 0.66);
+}
+
+.exhibit-panel__toggle,
+.exhibit-panel__index-toggle,
+.exhibit-panel__index-list button,
+.exhibit-panel .btn,
+.exhibit-panel .gift-hint {
+  pointer-events: auto;
 }
 
 .exhibit-panel__toggle {

@@ -585,7 +585,10 @@ async function boot() {
   });
 
   if (state.scene) {
+    let cakeFrameSkip = 0;
     state.scene.onFrame(({ camera, active }) => {
+      cakeFrameSkip = (cakeFrameSkip + 1) % 2;
+      if (cakeFrameSkip !== 0) return;
       const container = document.getElementById("cake-controls");
       if (!container) return;
       if (!active || !state.scene.isActive()) {

@@ -251,16 +251,13 @@ export function createLabels({ scene, onSelect }) {
   }
 
   let frameSkip = 0;
-  const isMobile = window.matchMedia("(max-width: 760px)").matches;
   const unsubscribe = scene.onFrame(({ camera, active }) => {
     if (!active || !scene.isActive()) {
       hideAll();
       return;
     }
-    if (isMobile) {
-      frameSkip = (frameSkip + 1) % 2;
-      if (frameSkip !== 0) return;
-    }
+    frameSkip = (frameSkip + 1) % 2;
+    if (frameSkip !== 0) return;
     update(camera);
   });
 
