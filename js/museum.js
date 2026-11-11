@@ -238,7 +238,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     alpha: false,
     powerPreference: "high-performance"
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.2 : 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? (window.innerWidth < 380 ? 1.0 : 1.2) : 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1619,7 +1619,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 760 ? 1.2 : 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 380 ? 1.0 : (window.innerWidth < 760 ? 1.2 : 2)));
     if (active) rebuildPath();
   }
 

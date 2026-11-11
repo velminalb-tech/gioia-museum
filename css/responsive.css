@@ -819,6 +819,13 @@
   html {
     scroll-behavior: smooth;
   }
+
+  .exhibit-panel,
+  .float-label,
+  .unlock__content {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 /* ============================================================
