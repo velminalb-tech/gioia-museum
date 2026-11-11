@@ -1475,6 +1475,43 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   addGlowSprite(0, 5.2, -222.9, 7, 0xffd9a0, 0.18);
 
   /* ------------------------------------------------------------
+     Floating pendant lights (magical atmosphere)
+     ------------------------------------------------------------ */
+  const pendantColors = [0xc9a0ff, 0xffb3d9, 0x9fe8ff, 0xbfe0ff, 0xffd6a8];
+  const pendantCount = isMobile ? 22 : 46;
+  const pendants = [];
+  const pendantSeeds = seeded(9173);
+  for (let i = 0; i < pendantCount; i += 1) {
+    const hue = 0.52 + pendantSeeds() * 0.32;
+    const color = new THREE.Color().setHSL(hue, 0.55, 0.72);
+    const material = new THREE.SpriteMaterial({
+      map: glowTex,
+      color,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false
+    });
+    const sprite = new THREE.Sprite(material);
+    const x = (pendantSeeds() > 0.5 ? 1 : -1) * (4.8 + pendantSeeds() * 3.6);
+    const z = 8 - pendantSeeds() * 232;
+    const y = 4.1 + pendantSeeds() * 1.9;
+    sprite.position.set(x, y, z);
+    const scale = 0.55 + pendantSeeds() * 0.9;
+    sprite.scale.set(scale, scale, 1);
+    scene.add(sprite);
+    pendants.push({
+      sprite,
+      baseY: y,
+      phase: pendantSeeds() * Math.PI * 2,
+      speed: 0.35 + pendantSeeds() * 0.45,
+      hue,
+      colorPhase: pendantSeeds() * Math.PI * 2
+    });
+  }
+
+  /* ------------------------------------------------------------
      Atmosphere · dust and petals
      ------------------------------------------------------------ */
 
@@ -1744,6 +1781,14 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
         petal.points.geometry.attributes.position.needsUpdate = true;
       });
     }
+
+    pendants.forEach((item) => {
+      if (!item.sprite.visible) return;
+      item.sprite.position.y = item.baseY + Math.sin(time * item.speed + item.phase) * 0.18;
+      item.sprite.material.opacity = 0.42 + Math.sin(time * 0.7 + item.phase) * 0.12;
+      const hue = item.hue + Math.sin(time * 0.18 + item.colorPhase) * 0.04;
+      item.sprite.material.color.setHSL(hue, 0.55, 0.72);
+    });
 
     if (surpriseGroup.visible) {
       const targetScale = surpriseMode ? 1 : 0.001;
