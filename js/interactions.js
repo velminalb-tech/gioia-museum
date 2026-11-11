@@ -224,7 +224,9 @@ export function createInteractions(content, {
 
   document.addEventListener("museum:chapter", (event) => {
     const id = event.detail?.id;
-    if (!id || id === "celebration") return;
+    if (!id) return;
+    if (id === "final") finalSurprisePlayer.preload?.();
+    if (id === "celebration") return;
     const panel = panelFor(id);
     if (!panel) return;
     // Reopen the compact card whenever a section is (re)entered, then
@@ -475,7 +477,14 @@ export function createInteractions(content, {
     const scene = getScene();
     scene?.resetSurprise?.();
     scene?.revealSurprise?.();
-    finalSurprisePlayer.play();
+    finalSurprisePlayer.preload?.();
+    const tryPlay = () => {
+      const played = finalSurprisePlayer.play();
+      if (!played && !finalSurprisePlayer.ready) {
+        window.setTimeout(tryPlay, 300);
+      }
+    };
+    tryPlay();
   });
 
   function collapsePanel(id) {
