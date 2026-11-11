@@ -18,7 +18,7 @@ function pad(value) {
   return String(Math.max(0, value)).padStart(2, "0");
 }
 
-export function createCountdown(content, { onComplete, onPreview, onPreviewComplete, onTenSeconds }) {
+export function createCountdown(content, { onComplete, onPreview, onPreviewComplete, onTenSeconds, onPreload }) {
   const target = resolveTarget(content.site.birthdayIso || FALLBACK_TARGET);
   const screen = document.getElementById("screen-countdown");
   const star = document.getElementById("preview-star");
@@ -100,6 +100,7 @@ export function createCountdown(content, { onComplete, onPreview, onPreviewCompl
     screen.classList.remove("is-ready");
     finished = false;
     tenSecondsTriggered = false;
+    onPreload?.();
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => screen.classList.add("is-ready"));
     });

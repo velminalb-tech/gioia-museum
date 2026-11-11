@@ -66,6 +66,7 @@ function createYouTubeMusic({ dock, toggle, mute, status, title, artist, content
       }
     },
     isPlaying: () => ready && player && player.getPlayerState && player.getPlayerState() === 1,
+    preload,
     getPlayer: () => player,
     isReady: () => ready
   };
@@ -151,11 +152,15 @@ function createYouTubeMusic({ dock, toggle, mute, status, title, artist, content
     });
   }
 
-  // Prepare the player during loading so the Enter click can start it.
-  loadApi().then(createPlayer).catch(() => {
-    dock?.classList.add("is-missing");
-    if (status) status.textContent = "Listen on Spotify";
-  });
+  function preload() {
+    loadApi().then(createPlayer).catch(() => {
+      dock?.classList.add("is-missing");
+      if (status) status.textContent = "Listen on Spotify";
+    });
+  }
+
+  // Prepare the API/player in the background, but do not block.
+  preload();
 
   function play() {
     reveal();

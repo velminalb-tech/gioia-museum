@@ -628,6 +628,7 @@ async function boot() {
     onComplete: handleBirthdayMoment,
     onPreview: startPreview,
     onPreviewComplete: () => showUnlock(true),
+    onPreload: () => countdownAudio.preload(),
     onTenSeconds: () => {
       const tryPlay = () => {
         if (countdownAudio.play()) return;

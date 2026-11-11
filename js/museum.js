@@ -1648,6 +1648,9 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     const raf = requestAnimationFrame(tick);
     tick.raf = raf;
     if (document.hidden) return;
+    const unlockScreen = document.getElementById("screen-unlock");
+    const unlockVisible = !!unlockScreen && !unlockScreen.hidden;
+    if (!active && !unlockVisible) return;
     const time = clock.getElapsedTime();
     const delta = Math.min(0.05, Math.max(0, time - lastTime));
     lastTime = time;

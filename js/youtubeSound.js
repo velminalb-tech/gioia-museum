@@ -1,15 +1,18 @@
 /* ============================================================
    youtubeSound.js — play a short YouTube clip as a sound effect.
+   Player creation is lazy to avoid loading hidden iframes until
+   the sound is actually needed.
    ============================================================ */
 
 export function createYouTubeSound(videoId, { volume = 1, onStart, onEnd } = {}) {
   if (!videoId) {
-    return { ready: false, play() {}, stop() {} };
+    return { ready: false, play() { return false; }, stop() {}, preload() {} };
   }
 
   let player = null;
   let ready = false;
   let playing = false;
+  let creating = false;
   const container = document.createElement("div");
   container.style.position = "fixed";
   container.style.width = "1px";
@@ -38,42 +41,59 @@ export function createYouTubeSound(videoId, { volume = 1, onStart, onEnd } = {})
     });
   }
 
-  loadApi().then(() => {
-    player = new window.YT.Player(container, {
-      width: "1",
-      height: "1",
-      videoId,
-      playerVars: {
-        autoplay: 0,
-        controls: 0,
-        disablekb: 1,
-        fs: 0,
-        iv_load_policy: 3,
-        modestbranding: 1,
-        rel: 0
-      },
-      events: {
-        onReady: () => {
-          ready = true;
-          try { player.setVolume(Math.round(volume * 100)); } catch (e) {}
+  function createPlayer() {
+    if (player) return Promise.resolve();
+    if (creating) return new Promise((resolve) => { const check = () => { if (ready) resolve(); else setTimeout(check, 100); }; check(); });
+    creating = true;
+    return loadApi().then(() => {
+      player = new window.YT.Player(container, {
+        width: "1",
+        height: "1",
+        videoId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          iv_load_policy: 3,
+          modestbranding: 1,
+          rel: 0
         },
-        onStateChange: (event) => {
-          if (event.data === 0) {
-            playing = false;
-            onEnd?.();
-          } else if (event.data === 1) {
-            playing = true;
-            onStart?.();
+        events: {
+          onReady: () => {
+            ready = true;
+            creating = false;
+            try { player.setVolume(Math.round(volume * 100)); } catch (e) {}
+          },
+          onStateChange: (event) => {
+            if (event.data === 0) {
+              playing = false;
+              onEnd?.();
+            } else if (event.data === 1) {
+              playing = true;
+              onStart?.();
+            }
           }
         }
-      }
-    });
-  }).catch(() => {});
+      });
+    }).catch(() => { creating = false; });
+  }
+
+  function preload() {
+    createPlayer();
+  }
 
   return {
     get ready() { return ready; },
     play() {
-      if (!ready || !player) return false;
+      if (!ready || !player) {
+        createPlayer().then(() => {
+          if (ready && player && !playing) {
+            try { player.seekTo(0, true); player.playVideo(); } catch (e) {}
+          }
+        });
+        return false;
+      }
       if (playing) return false;
       try {
         player.seekTo(0, true);
@@ -87,6 +107,7 @@ export function createYouTubeSound(videoId, { volume = 1, onStart, onEnd } = {})
       if (!ready || !player) return;
       try { player.stopVideo(); } catch (e) {}
       playing = false;
-    }
+    },
+    preload
   };
 }
