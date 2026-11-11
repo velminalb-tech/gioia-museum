@@ -466,6 +466,11 @@ export function createInteractions(content, {
     }, 120);
   });
 
+  document.getElementById("final-read-letter")?.addEventListener("click", () => {
+    const body = (final.letter || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+    ui.openModal(`<div class="final-letter">${body}</div>`);
+  });
+
   document.getElementById("surprise-button")?.addEventListener("click", () => {
     const scene = getScene();
     scene?.resetSurprise?.();
