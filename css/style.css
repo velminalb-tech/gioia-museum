@@ -3239,7 +3239,14 @@ button.float-label.is-visible {
 }
 
 .final-cinema {
+  pointer-events: none;
   position: relative;
+}
+
+.final-cinema .btn,
+.final-cinema #final-read-letter {
+  pointer-events: auto;
+}
   width: min(760px, 100%);
   max-height: calc(100svh - 9.6rem);
   padding: clamp(1.2rem, 4vw, 2.8rem);
