@@ -1475,9 +1475,44 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   addGlowSprite(0, 5.2, -222.9, 7, 0xffd9a0, 0.18);
 
   /* ------------------------------------------------------------
-     Floating pendant lights (magical atmosphere)
+     Floating lantern lights (magical atmosphere)
      ------------------------------------------------------------ */
-  const pendantColors = [0xc9a0ff, 0xffb3d9, 0x9fe8ff, 0xbfe0ff, 0xffd6a8];
+  function lanternTexture() {
+    return canvasTexture(128, 192, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2;
+      // Soft outer glow
+      const glow = ctx.createRadialGradient(cx, h * 0.45, 0, cx, h * 0.45, w * 0.62);
+      glow.addColorStop(0, "rgba(255,255,255,0.95)");
+      glow.addColorStop(0.35, "rgba(255,255,255,0.55)");
+      glow.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
+
+      // Teardrop / pendant body
+      ctx.beginPath();
+      ctx.moveTo(cx, h * 0.08);
+      ctx.bezierCurveTo(cx + w * 0.22, h * 0.18, cx + w * 0.26, h * 0.55, cx, h * 0.92);
+      ctx.bezierCurveTo(cx - w * 0.26, h * 0.55, cx - w * 0.22, h * 0.18, cx, h * 0.08);
+      ctx.closePath();
+      const body = ctx.createLinearGradient(0, h * 0.08, 0, h * 0.92);
+      body.addColorStop(0, "rgba(255,255,255,0.95)");
+      body.addColorStop(0.5, "rgba(255,255,255,0.75)");
+      body.addColorStop(1, "rgba(255,255,255,0.4)");
+      ctx.fillStyle = body;
+      ctx.fill();
+
+      // Inner core
+      const core = ctx.createRadialGradient(cx, h * 0.42, 0, cx, h * 0.42, w * 0.18);
+      core.addColorStop(0, "rgba(255,255,255,1)");
+      core.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = core;
+      ctx.fillRect(0, 0, w, h);
+    });
+  }
+
+  const lanternTex = lanternTexture();
+  const pendantColors = [0xc9a0ff, 0xffb3d9, 0x9fe8ff, 0xbfe0ff, 0xffd6a8, 0x9cffc8];
   const pendantCount = isMobile ? 22 : 46;
   const pendants = [];
   const pendantSeeds = seeded(9173);
@@ -1485,10 +1520,10 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     const hue = 0.52 + pendantSeeds() * 0.32;
     const color = new THREE.Color().setHSL(hue, 0.55, 0.72);
     const material = new THREE.SpriteMaterial({
-      map: glowTex,
+      map: lanternTex,
       color,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.6,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       toneMapped: false
@@ -1499,7 +1534,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     const y = 4.1 + pendantSeeds() * 1.9;
     sprite.position.set(x, y, z);
     const scale = 0.55 + pendantSeeds() * 0.9;
-    sprite.scale.set(scale, scale, 1);
+    sprite.scale.set(scale * 0.62, scale * 0.95, 1);
     scene.add(sprite);
     pendants.push({
       sprite,
