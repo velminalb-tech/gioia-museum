@@ -1475,76 +1475,187 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   addGlowSprite(0, 5.2, -222.9, 7, 0xffd9a0, 0.18);
 
   /* ------------------------------------------------------------
-     Floating lantern lights (magical atmosphere)
+     Floating lantern sculptures (magical atmosphere)
      ------------------------------------------------------------ */
-  function lanternTexture() {
-    return canvasTexture(128, 192, (ctx, w, h) => {
-      ctx.clearRect(0, 0, w, h);
-      const cx = w / 2;
-      // Soft outer glow
-      const glow = ctx.createRadialGradient(cx, h * 0.45, 0, cx, h * 0.45, w * 0.62);
-      glow.addColorStop(0, "rgba(255,255,255,0.95)");
-      glow.addColorStop(0.35, "rgba(255,255,255,0.55)");
-      glow.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, w, h);
+  // One shared silhouette: a wide, softly rounded body that tapers
+  // into a slim rounded crown. The profile is lathed once, then
+  // drawn with instancing per colour family so the whole collection
+  // costs only a handful of draw calls.
+  const lanternProfile = [
+    [0.000, 0.000],
+    [0.170, 0.030],
+    [0.290, 0.090],
+    [0.375, 0.170],
+    [0.430, 0.270],
+    [0.462, 0.400],
+    [0.470, 0.550],
+    [0.462, 0.720],
+    [0.438, 0.880],
+    [0.392, 1.020],
+    [0.325, 1.130],
+    [0.238, 1.220],
+    [0.140, 1.290],
+    [0.000, 1.330]
+  ].map(([radius, y]) => new THREE.Vector2(Math.max(0.0001, radius), y));
 
-      // Teardrop / pendant body
-      ctx.beginPath();
-      ctx.moveTo(cx, h * 0.08);
-      ctx.bezierCurveTo(cx + w * 0.22, h * 0.18, cx + w * 0.26, h * 0.55, cx, h * 0.92);
-      ctx.bezierCurveTo(cx - w * 0.26, h * 0.55, cx - w * 0.22, h * 0.18, cx, h * 0.08);
-      ctx.closePath();
-      const body = ctx.createLinearGradient(0, h * 0.08, 0, h * 0.92);
-      body.addColorStop(0, "rgba(255,255,255,0.95)");
-      body.addColorStop(0.5, "rgba(255,255,255,0.75)");
-      body.addColorStop(1, "rgba(255,255,255,0.4)");
-      ctx.fillStyle = body;
-      ctx.fill();
+  const LANTERN_H = 1.33;
+  const LANTERN_W = 0.94;
+  const lanternGeometry = new THREE.LatheGeometry(lanternProfile, isMobile ? 16 : 26);
 
-      // Inner core
-      const core = ctx.createRadialGradient(cx, h * 0.42, 0, cx, h * 0.42, w * 0.18);
-      core.addColorStop(0, "rgba(255,255,255,1)");
-      core.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = core;
-      ctx.fillRect(0, 0, w, h);
-    });
-  }
+  // Neutral white halo texture so each family can tint it cleanly.
+  const lanternGlowTex = canvasTexture(128, 128, (ctx, w, h) => {
+    const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    g.addColorStop(0, "rgba(255,255,255,0.95)");
+    g.addColorStop(0.24, "rgba(255,255,255,0.42)");
+    g.addColorStop(0.58, "rgba(255,255,255,0.11)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  });
 
-  const lanternTex = lanternTexture();
-  const pendantColors = [0xc9a0ff, 0xffb3d9, 0x9fe8ff, 0xbfe0ff, 0xffd6a8, 0x9cffc8];
-  const pendantCount = isMobile ? 22 : 46;
-  const pendants = [];
-  const pendantSeeds = seeded(9173);
-  for (let i = 0; i < pendantCount; i += 1) {
-    const hue = 0.52 + pendantSeeds() * 0.32;
-    const color = new THREE.Color().setHSL(hue, 0.55, 0.72);
-    const material = new THREE.SpriteMaterial({
-      map: lanternTex,
-      color,
+  const lanternFamilies = [
+    { base: 0xd7c2ff, halo: 0xc9aaff, aspect: 0.66 },
+    { base: 0xffcfe6, halo: 0xffb6da, aspect: 0.7 },
+    { base: 0xc6f2ff, halo: 0xa9e7ff, aspect: 0.62 },
+    { base: 0xe4d8ff, halo: 0xd2bfff, aspect: 0.74 },
+    { base: 0xffdcf0, halo: 0xffc4e2, aspect: 0.68 },
+    { base: 0xa9ffd8, halo: 0x8dffc4, aspect: 0.52, accent: true }
+  ];
+  lanternFamilies.forEach((family, index) => {
+    const hsl = { h: 0, s: 0, l: 0 };
+    new THREE.Color(family.base).getHSL(hsl);
+    family.hue = hsl.h;
+    family.sat = hsl.s;
+    family.light = hsl.l;
+    family.pulse = index * 1.37;
+  });
+
+  const lanternSeeds = seeded(9173);
+  const lanternDummy = new THREE.Object3D();
+  const lanternList = [];
+  const lanternCount = isMobile ? 26 : 48;
+  const accentEvery = Math.max(1, Math.floor(lanternCount / (isMobile ? 2 : 4)));
+  const lanternZFrom = 7;
+  const lanternZTo = -220;
+  const lanternZSpan = lanternZFrom - lanternZTo;
+
+  for (let i = 0; i < lanternCount; i += 1) {
+    const accent = lanternCount > 8 && i > 2 && i % accentEvery === 3;
+    const familyIndex = accent ? lanternFamilies.length - 1 : Math.floor(lanternSeeds() * 5) % 5;
+    const family = lanternFamilies[familyIndex];
+
+    // Layered depth: alternating sides, biased toward the aisle but
+    // never close enough to sit in front of a frame (|x| ≥ 4.55).
+    const side = i % 2 === 0 ? 1 : -1;
+    const depthSeed = lanternSeeds();
+    const x = side * (4.55 + depthSeed * depthSeed * 3.3);
+    const z = lanternZFrom - lanternZSpan * ((i + 0.15 + lanternSeeds() * 0.7) / lanternCount);
+
+    // The memory boards are taller than the painting frames, so that
+    // hall keeps the lanterns higher still.
+    const memoryHall = z < -92 && z > -134;
+
+    // Generous size variation: a few oversized hero lanterns, a
+    // majority of medium ones, and small green accent points.
+    const hero = !accent && lanternSeeds() > 0.8;
+    const baseHeight = accent
+      ? 0.24 + lanternSeeds() * 0.16
+      : hero
+        ? 1.4 + lanternSeeds() * 0.3
+        : 0.72 + lanternSeeds() * 0.5;
+    const height = memoryHall ? Math.min(baseHeight, 1.3) : baseHeight;
+    const aspect = family.aspect * (0.92 + lanternSeeds() * 0.16);
+    const width = height * aspect;
+
+    // Hang high in the room, always clear of the frames below
+    // (painting tops sit below y = 4.0, memory boards below y = 4.35).
+    const bottom = accent
+      ? 5.05 + lanternSeeds() * 0.5
+      : (memoryHall ? 4.6 : 4.3) + lanternSeeds() * 0.2;
+    let y = bottom + height / 2;
+    if (y + height / 2 > 6.3) y = 6.3 - height / 2;
+
+    const haloOpacity = accent ? 0.32 : 0.18 + lanternSeeds() * 0.1;
+    const haloMaterial = new THREE.SpriteMaterial({
+      map: lanternGlowTex,
+      color: family.halo,
       transparent: true,
-      opacity: 0.6,
+      opacity: haloOpacity,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       toneMapped: false
     });
-    const sprite = new THREE.Sprite(material);
-    const x = (pendantSeeds() > 0.5 ? 1 : -1) * (4.8 + pendantSeeds() * 3.6);
-    const z = 8 - pendantSeeds() * 232;
-    const y = 4.1 + pendantSeeds() * 1.9;
-    sprite.position.set(x, y, z);
-    const scale = 0.55 + pendantSeeds() * 0.9;
-    sprite.scale.set(scale * 0.62, scale * 0.95, 1);
-    scene.add(sprite);
-    pendants.push({
-      sprite,
+    const halo = new THREE.Sprite(haloMaterial);
+    halo.position.set(x, y, z);
+    const haloSize = width * 2.1 + 0.4;
+    halo.scale.set(haloSize, haloSize, 1);
+    scene.add(halo);
+
+    lanternList.push({
+      x,
+      z,
       baseY: y,
-      phase: pendantSeeds() * Math.PI * 2,
-      speed: 0.35 + pendantSeeds() * 0.45,
-      hue,
-      colorPhase: pendantSeeds() * Math.PI * 2
+      height,
+      scaleY: height / LANTERN_H,
+      scaleX: width / LANTERN_W,
+      phase: lanternSeeds() * Math.PI * 2,
+      swayPhase: lanternSeeds() * Math.PI * 2,
+      speed: 0.16 + lanternSeeds() * 0.24,
+      familyIndex,
+      halo,
+      haloOpacity
     });
   }
+
+  // Suspension strings: one merged line segment per lantern.
+  const stringPositions = new Float32Array(lanternList.length * 6);
+  lanternList.forEach((item, index) => {
+    const offset = index * 6;
+    stringPositions[offset] = item.x;
+    stringPositions[offset + 1] = item.baseY + item.height * 0.5;
+    stringPositions[offset + 2] = item.z;
+    stringPositions[offset + 3] = item.x;
+    stringPositions[offset + 4] = 6.35;
+    stringPositions[offset + 5] = item.z;
+  });
+  const stringGeometry = new THREE.BufferGeometry();
+  stringGeometry.setAttribute("position", new THREE.BufferAttribute(stringPositions, 3));
+  const lanternStrings = new THREE.LineSegments(
+    stringGeometry,
+    new THREE.LineBasicMaterial({ color: 0xd8c7b4, transparent: true, opacity: 0.15, depthWrite: false })
+  );
+  lanternStrings.frustumCulled = false;
+  scene.add(lanternStrings);
+
+  // Group the lanterns by colour family and build one instanced mesh
+  // per family (6 draw calls total at most).
+  const lanternGroups = lanternFamilies.map((family) => ({ family, items: [] }));
+  lanternList.forEach((item) => lanternGroups[item.familyIndex].items.push(item));
+
+  lanternGroups.forEach(({ family, items }) => {
+    if (!items.length) return;
+    const material = new THREE.MeshStandardMaterial({
+      color: family.base,
+      emissive: family.base,
+      emissiveIntensity: family.accent ? 1.0 : 0.95,
+      roughness: 0.38,
+      metalness: 0.0
+    });
+    const mesh = new THREE.InstancedMesh(lanternGeometry, material, items.length);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.frustumCulled = false;
+    items.forEach((item, index) => {
+      item.mesh = mesh;
+      item.index = index;
+      lanternDummy.position.set(item.x, item.baseY, item.z);
+      lanternDummy.scale.set(item.scaleX, item.scaleY, item.scaleX);
+      lanternDummy.updateMatrix();
+      mesh.setMatrixAt(index, lanternDummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    scene.add(mesh);
+    family.material = material;
+  });
 
   /* ------------------------------------------------------------
      Atmosphere · dust and petals
@@ -1817,12 +1928,29 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
       });
     }
 
-    pendants.forEach((item) => {
-      if (!item.sprite.visible) return;
-      item.sprite.position.y = item.baseY + Math.sin(time * item.speed + item.phase) * 0.18;
-      item.sprite.material.opacity = 0.42 + Math.sin(time * 0.7 + item.phase) * 0.12;
-      const hue = item.hue + Math.sin(time * 0.18 + item.colorPhase) * 0.04;
-      item.sprite.material.color.setHSL(hue, 0.55, 0.72);
+    // Lanterns drift almost imperceptibly; their colour breathes
+    // over minutes rather than pulsing visibly.
+    const lanternMotion = reducedMotion ? 0 : 1;
+    lanternGroups.forEach(({ family, items }) => {
+      if (!items.length) return;
+      if (family.material) {
+        const breath = 0.5 + 0.5 * Math.sin(time * 0.32 + family.pulse);
+        family.material.emissiveIntensity = 0.8 + breath * 0.2;
+        const hue = family.hue + Math.sin(time * 0.05 + family.pulse) * 0.02;
+        family.material.color.setHSL(hue, family.sat, family.light);
+        family.material.emissive.setHSL(hue, family.sat * 0.55, family.light * 0.58);
+      }
+      items.forEach((item) => {
+        const bob = Math.sin(time * item.speed + item.phase) * 0.07 * lanternMotion;
+        const sway = Math.sin(time * item.speed * 0.6 + item.swayPhase) * 0.018 * lanternMotion;
+        lanternDummy.position.set(item.x + sway, item.baseY + bob, item.z);
+        lanternDummy.scale.set(item.scaleX, item.scaleY, item.scaleX);
+        lanternDummy.updateMatrix();
+        item.mesh.setMatrixAt(item.index, lanternDummy.matrix);
+        item.halo.position.set(item.x + sway, item.baseY + bob, item.z);
+        item.halo.material.opacity = item.haloOpacity + Math.sin(time * 0.35 + item.phase) * 0.035;
+      });
+      items[0].mesh.instanceMatrix.needsUpdate = true;
     });
 
     if (surpriseGroup.visible) {
