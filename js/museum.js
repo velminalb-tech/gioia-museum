@@ -248,7 +248,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   scene.background = new THREE.Color(0x120b09);
   scene.fog = new THREE.FogExp2(0x120b09, 0.0105);
 
-  const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 420);
+  const camera = new THREE.PerspectiveCamera(isMobile ? 64 : 55, window.innerWidth / window.innerHeight, 0.1, 420);
   camera.position.set(0, 1.78, 14.5);
   const lookCurrent = new THREE.Vector3(0, 1.72, -2);
   camera.lookAt(lookCurrent);

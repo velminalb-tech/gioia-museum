@@ -2578,6 +2578,18 @@ code {
   color: var(--gold);
 }
 
+#surprise-button {
+  border: 1px solid rgba(240, 217, 164, 0.45);
+  background: linear-gradient(160deg, rgba(201, 164, 92, 0.22), rgba(120, 80, 40, 0.12));
+  box-shadow: 0 0 18px rgba(201, 164, 92, 0.25);
+  animation: surprisePulse 2.6s ease-in-out infinite;
+}
+
+@keyframes surprisePulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(201, 164, 92, 0.25); }
+  50% { box-shadow: 0 0 28px rgba(240, 217, 164, 0.45); }
+}
+
 .cake-controls {
   position: fixed;
   top: 0;
