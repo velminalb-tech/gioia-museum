@@ -2780,6 +2780,7 @@ body::-webkit-scrollbar,
 
 .exhibit-panel {
   pointer-events: none;
+  touch-action: pan-y;
   position: absolute;
   left: clamp(1rem, 3vw, 2.6rem);
   bottom: clamp(4.8rem, 9vh, 7rem);
@@ -2884,6 +2885,7 @@ body::-webkit-scrollbar,
 }
 
 .exhibit-panel__body {
+  pointer-events: none;
   max-height: min(44vh, 410px);
   padding: 0 0.95rem 1rem;
   overflow-y: auto;
