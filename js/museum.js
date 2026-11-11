@@ -1481,6 +1481,8 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   // into a slim rounded crown. The profile is lathed once, then
   // drawn with instancing per colour family so the whole collection
   // costs only a handful of draw calls.
+  const LANTERN_H = 1.33;
+  const LANTERN_W = 0.94;
   const lanternProfile = [
     [0.000, 0.000],
     [0.170, 0.030],
@@ -1496,10 +1498,8 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     [0.238, 1.220],
     [0.140, 1.290],
     [0.000, 1.330]
-  ].map(([radius, y]) => new THREE.Vector2(Math.max(0.0001, radius), y));
+  ].map(([radius, y]) => new THREE.Vector2(Math.max(0.0001, radius), y - LANTERN_H / 2));
 
-  const LANTERN_H = 1.33;
-  const LANTERN_W = 0.94;
   const lanternGeometry = new THREE.LatheGeometry(lanternProfile, isMobile ? 16 : 26);
 
   // Neutral white halo texture so each family can tint it cleanly.
@@ -1527,6 +1527,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     family.hue = hsl.h;
     family.sat = hsl.s;
     family.light = hsl.l;
+    family.core = new THREE.Color().setHSL(hsl.h, hsl.s * 0.3, Math.min(1, hsl.l + 0.12));
     family.pulse = index * 1.37;
   });
 
@@ -1561,7 +1562,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     const baseHeight = accent
       ? 0.24 + lanternSeeds() * 0.16
       : hero
-        ? 1.4 + lanternSeeds() * 0.3
+        ? 1.4 + lanternSeeds() * 0.25
         : 0.72 + lanternSeeds() * 0.5;
     const height = memoryHall ? Math.min(baseHeight, 1.3) : baseHeight;
     const aspect = family.aspect * (0.92 + lanternSeeds() * 0.16);
@@ -1573,9 +1574,10 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
       ? 5.05 + lanternSeeds() * 0.5
       : (memoryHall ? 4.6 : 4.3) + lanternSeeds() * 0.2;
     let y = bottom + height / 2;
-    if (y + height / 2 > 6.3) y = 6.3 - height / 2;
+    // Keep the crown just below the ceiling beams so nothing clips.
+    if (y + height / 2 > 6.0) y = 6.0 - height / 2;
 
-    const haloOpacity = accent ? 0.32 : 0.18 + lanternSeeds() * 0.1;
+    const haloOpacity = accent ? 0.18 : 0.07 + lanternSeeds() * 0.04;
     const haloMaterial = new THREE.SpriteMaterial({
       map: lanternGlowTex,
       color: family.halo,
@@ -1587,7 +1589,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     });
     const halo = new THREE.Sprite(haloMaterial);
     halo.position.set(x, y, z);
-    const haloSize = width * 2.1 + 0.4;
+    const haloSize = width * 1.9 + 0.3;
     halo.scale.set(haloSize, haloSize, 1);
     scene.add(halo);
 
@@ -1632,29 +1634,120 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   const lanternGroups = lanternFamilies.map((family) => ({ family, items: [] }));
   lanternList.forEach((item) => lanternGroups[item.familyIndex].items.push(item));
 
+  // Two additive passes per family: a frosted outer shell whose edge
+  // melts into the air, and a smaller, whiter inner volume that reads
+  // as the light source suspended inside it. Still only leaves and
+  // instanced meshes, so the cost stays tiny.
+  const lanternVertexShader = `
+    varying vec3 vNormalW;
+    varying vec3 vViewDirW;
+    varying float vCrown;
+
+    void main() {
+      vec3 objectNormal = vec3(normal);
+      vec4 worldPosition = vec4(position, 1.0);
+
+      #ifdef USE_INSTANCING
+        objectNormal = mat3(instanceMatrix) * objectNormal;
+        worldPosition = instanceMatrix * worldPosition;
+      #endif
+
+      worldPosition = modelMatrix * worldPosition;
+      vNormalW = normalize(mat3(modelMatrix) * objectNormal);
+      vViewDirW = normalize(cameraPosition - worldPosition.xyz);
+      vCrown = uv.y;
+      gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    }
+  `;
+
+  const lanternFragmentShader = `
+    uniform vec3 uTint;
+    uniform vec3 uCore;
+    uniform float uAlpha;
+    uniform float uGlow;
+    varying vec3 vNormalW;
+    varying vec3 vViewDirW;
+    varying float vCrown;
+
+    void main() {
+      vec3 n = normalize(vNormalW);
+      vec3 v = normalize(vViewDirW);
+      float facing = clamp(dot(n, v), 0.0, 1.0);
+
+      // The silhouette fades almost entirely into the air.
+      float falloff = smoothstep(0.0, 0.46, facing);
+      // Light diffusing outward from the heart of the lantern.
+      float inner = pow(facing, 1.7);
+
+      vec3 color = mix(uTint, uCore, inner * 0.9);
+      float alpha = uAlpha * (0.06 + 0.94 * falloff);
+      alpha += 0.03 * (1.0 - facing);
+
+      // Delicate fade at the base and crown so neither end reads
+      // as a hard edge.
+      float crown = smoothstep(0.0, 0.38, vCrown) * (1.0 - 0.42 * smoothstep(0.84, 1.0, vCrown));
+      alpha *= crown * uGlow;
+
+      gl_FragColor = vec4(color, alpha);
+    }
+  `;
+
+  function lanternMaterial(tint, core, alpha) {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uTint: { value: tint.clone() },
+        uCore: { value: core.clone() },
+        uAlpha: { value: alpha },
+        uGlow: { value: 1 }
+      },
+      vertexShader: lanternVertexShader,
+      fragmentShader: lanternFragmentShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.FrontSide
+    });
+  }
+
+  const CORE_SCALE = 0.56;
+
   lanternGroups.forEach(({ family, items }) => {
     if (!items.length) return;
-    const material = new THREE.MeshStandardMaterial({
-      color: family.base,
-      emissive: family.base,
-      emissiveIntensity: family.accent ? 1.0 : 0.95,
-      roughness: 0.38,
-      metalness: 0.0
+    const tint = new THREE.Color(family.base);
+    const coreTint = family.core.clone();
+    const hot = new THREE.Color().setHSL(family.hue, family.sat * 0.14, 0.98);
+
+    const shellMaterial = lanternMaterial(tint, coreTint, family.accent ? 0.44 : 0.48);
+    const coreMaterial = lanternMaterial(coreTint, hot, family.accent ? 0.54 : 0.58);
+
+    const mesh = new THREE.InstancedMesh(lanternGeometry, shellMaterial, items.length);
+    const coreMesh = new THREE.InstancedMesh(lanternGeometry, coreMaterial, items.length);
+    [mesh, coreMesh].forEach((entry) => {
+      entry.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      entry.frustumCulled = false;
     });
-    const mesh = new THREE.InstancedMesh(lanternGeometry, material, items.length);
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    mesh.frustumCulled = false;
+
     items.forEach((item, index) => {
       item.mesh = mesh;
+      item.coreMesh = coreMesh;
       item.index = index;
+
       lanternDummy.position.set(item.x, item.baseY, item.z);
       lanternDummy.scale.set(item.scaleX, item.scaleY, item.scaleX);
       lanternDummy.updateMatrix();
       mesh.setMatrixAt(index, lanternDummy.matrix);
+
+      lanternDummy.scale.set(item.scaleX * CORE_SCALE, item.scaleY * CORE_SCALE, item.scaleX * CORE_SCALE);
+      lanternDummy.updateMatrix();
+      coreMesh.setMatrixAt(index, lanternDummy.matrix);
     });
+
     mesh.instanceMatrix.needsUpdate = true;
+    coreMesh.instanceMatrix.needsUpdate = true;
     scene.add(mesh);
-    family.material = material;
+    scene.add(coreMesh);
+    family.material = shellMaterial;
+    family.coreMaterial = coreMaterial;
   });
 
   /* ------------------------------------------------------------
@@ -1935,10 +2028,18 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
       if (!items.length) return;
       if (family.material) {
         const breath = 0.5 + 0.5 * Math.sin(time * 0.32 + family.pulse);
-        family.material.emissiveIntensity = 0.8 + breath * 0.2;
         const hue = family.hue + Math.sin(time * 0.05 + family.pulse) * 0.02;
-        family.material.color.setHSL(hue, family.sat, family.light);
-        family.material.emissive.setHSL(hue, family.sat * 0.55, family.light * 0.58);
+        const glow = 0.9 + breath * 0.12;
+
+        const shell = family.material.uniforms;
+        shell.uGlow.value = glow;
+        shell.uTint.value.setHSL(hue, family.sat, family.light);
+        shell.uCore.value.setHSL(hue, family.sat * 0.3, Math.min(1, family.light + 0.12));
+
+        const core = family.coreMaterial.uniforms;
+        core.uGlow.value = glow;
+        core.uTint.value.setHSL(hue, family.sat * 0.22, Math.min(1, family.light + 0.06));
+        core.uCore.value.setHSL(hue, family.sat * 0.12, 1);
       }
       items.forEach((item) => {
         const bob = Math.sin(time * item.speed + item.phase) * 0.07 * lanternMotion;
@@ -1947,10 +2048,14 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
         lanternDummy.scale.set(item.scaleX, item.scaleY, item.scaleX);
         lanternDummy.updateMatrix();
         item.mesh.setMatrixAt(item.index, lanternDummy.matrix);
+        lanternDummy.scale.set(item.scaleX * CORE_SCALE, item.scaleY * CORE_SCALE, item.scaleX * CORE_SCALE);
+        lanternDummy.updateMatrix();
+        item.coreMesh.setMatrixAt(item.index, lanternDummy.matrix);
         item.halo.position.set(item.x + sway, item.baseY + bob, item.z);
-        item.halo.material.opacity = item.haloOpacity + Math.sin(time * 0.35 + item.phase) * 0.035;
+        item.halo.material.opacity = item.haloOpacity + Math.sin(time * 0.35 + item.phase) * 0.02;
       });
       items[0].mesh.instanceMatrix.needsUpdate = true;
+      items[0].coreMesh.instanceMatrix.needsUpdate = true;
     });
 
     if (surpriseGroup.visible) {
