@@ -61,7 +61,8 @@ const state = {
   scrollTriggers: [],
   scrollRaf: 0,
   suppressCountdownComplete: false,
-  reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  privatePreviewRequested: false
 };
 
 /* ------------------------------------------------------------
@@ -227,6 +228,14 @@ function showUnlock(preview = false) {
 }
 
 function routeAfterEntry() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("devpreview") === "1" || params.get("preview") === "1") {
+    state.privatePreviewRequested = true;
+  }
+  if (state.privatePreviewRequested) {
+    startPreview();
+    return;
+  }
   if (state.countdown?.isPast()) showUnlock(false);
   else showCountdown();
 }
@@ -623,12 +632,11 @@ async function boot() {
 
   state.login = createLogin(state.content, { onSuccess: routeAfterEntry });
 
-  const countdownAudio = createYouTubeSound("VpFdk24NUyM", { volume: 1 });
+  const countdownAudio = createYouTubeSound("VpFdk24NUyM", { volume: 1, preload: true });
   state.countdown = createCountdown(state.content, {
     onComplete: handleBirthdayMoment,
     onPreview: startPreview,
     onPreviewComplete: () => showUnlock(true),
-    onPreload: () => countdownAudio.preload(),
     onTenSeconds: () => {
       const tryPlay = () => {
         if (countdownAudio.play()) return;
@@ -696,6 +704,17 @@ window.addEventListener("resize", () => {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     state.music?.pause();
+  }
+});
+
+// Private DevPreview access (hidden from the public UI).
+document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey && event.shiftKey && (event.key === "D" || event.key === "d")) {
+    event.preventDefault();
+    if (!state.previewMode && !state.museumShown) {
+      state.privatePreviewRequested = true;
+      startPreview();
+    }
   }
 });
 

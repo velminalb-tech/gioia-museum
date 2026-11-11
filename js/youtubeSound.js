@@ -4,7 +4,7 @@
    the sound is actually needed.
    ============================================================ */
 
-export function createYouTubeSound(videoId, { volume = 1, onStart, onEnd } = {}) {
+export function createYouTubeSound(videoId, { volume = 1, onStart, onEnd, preload: shouldPreload = false } = {}) {
   if (!videoId) {
     return { ready: false, play() { return false; }, stop() {}, preload() {} };
   }
@@ -81,6 +81,10 @@ export function createYouTubeSound(videoId, { volume = 1, onStart, onEnd } = {})
 
   function preload() {
     createPlayer();
+  }
+
+  if (shouldPreload) {
+    preload();
   }
 
   return {

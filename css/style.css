@@ -2578,6 +2578,11 @@ code {
   color: var(--gold);
 }
 
+/* Hide the DevPreview star from the public UI; access via Ctrl+Shift+D or ?devpreview=1 */
+.preview-star {
+  display: none !important;
+}
+
 #surprise-button {
   border: 1px solid rgba(240, 217, 164, 0.45);
   background: linear-gradient(160deg, rgba(201, 164, 92, 0.22), rgba(120, 80, 40, 0.12));
