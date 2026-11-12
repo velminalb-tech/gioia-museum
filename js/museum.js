@@ -2033,6 +2033,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   let surpriseMode = false;
   let surpriseDancing = false;
   let surpriseTime = 0;
+  let danceShake = 0;
 
   const finalRoomDecor = [finalHeading, finalSub, heart, halo, heartGlowWide, heartGlowCore];
   function setFinalRoomDecor(visible) {
@@ -2059,6 +2060,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   function resetSurprise() {
     surpriseMode = false;
     surpriseDancing = false;
+    danceShake = 0;
     surpriseGroup.visible = false;
     surpriseGroup.scale.setScalar(0.001);
     surpriseGroup.position.set(4.6, 0, -219.2);
@@ -2785,7 +2787,39 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
       });
     }
 
+    // Rhythmic camera bump, locked to the dancer's own motion. It only
+    // runs while the character is actually dancing, eases in and out so
+    // it never pops, and is skipped entirely for reduced-motion visitors.
+    const shakeTarget = surpriseMode && surpriseDancing && !reducedMotion ? 1 : 0;
+    danceShake += (shakeTarget - danceShake) * (reducedMotion ? 1 : 0.06);
+    if (danceShake < 0.002) danceShake = 0;
+
+    const baseCameraX = camera.position.x;
+    const baseCameraY = camera.position.y;
+    const baseCameraZ = camera.position.z;
+    const baseRoll = camera.rotation.z;
+
+    if (danceShake > 0) {
+      // The dance swings its arms on sin(t * 5), so the half-rectified
+      // `pulse` lands on every arm beat; `sway` and `bounce` mirror the
+      // torso and head movement.
+      const pulse = Math.pow(Math.abs(Math.sin(surpriseTime * 5)), 2);
+      const sway = Math.sin(surpriseTime * 2.2);
+      const bounce = Math.sin(surpriseTime * 6);
+      camera.position.set(
+        baseCameraX + (sway * 0.02 + Math.sin(surpriseTime * 5 + 1.1) * 0.007) * danceShake,
+        baseCameraY + (bounce * 0.011 - pulse * 0.014) * danceShake,
+        baseCameraZ - pulse * 0.008 * danceShake
+      );
+      camera.rotation.z = baseRoll + Math.sin(surpriseTime * 5 + 0.5) * 0.0035 * danceShake;
+    }
+
     renderer.render(scene, camera);
+
+    if (danceShake > 0) {
+      camera.position.set(baseCameraX, baseCameraY, baseCameraZ);
+      camera.rotation.z = baseRoll;
+    }
   }
 
   function setActive(value) {
