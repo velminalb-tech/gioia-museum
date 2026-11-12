@@ -1062,4 +1062,42 @@
     font-size: 0.9rem;
     line-height: 1.55;
   }
+
+  .chapter--final.is-dancing .final-actions {
+    bottom: calc(0.35rem + var(--safe-bottom));
+    gap: 0.35rem;
+  }
+
+  .chapter--final.is-dancing .final-actions .btn {
+    min-height: 36px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.72rem;
+  }
+}
+
+/* Dancing surprise: keep the action row clear of the character on
+   narrow phones, and never let the row stack over his feet. */
+@media (max-width: 560px) {
+  .chapter--final.is-dancing .final-actions {
+    width: calc(100vw - 1.2rem);
+    max-width: calc(100vw - 1.2rem);
+    justify-content: center;
+    gap: 0.38rem;
+    bottom: calc(0.5rem + var(--safe-bottom));
+  }
+
+  .chapter--final.is-dancing .final-actions .btn {
+    flex: 0 1 auto;
+    min-height: 42px;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+  }
+}
+
+@media (max-width: 380px) {
+  .chapter--final.is-dancing .final-actions .btn {
+    padding: 0.5rem 0.55rem;
+    font-size: 0.72rem;
+  }
 }

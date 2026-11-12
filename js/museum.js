@@ -189,6 +189,77 @@ function floorTexture() {
   });
 }
 
+function panelInsetTexture() {
+  return canvasTexture(128, 256, (ctx, w, h) => {
+    // A soft vertical falloff: the top of a recess catches less light,
+    // the lower half picks up the warm floor bounce. Kept very low
+    // contrast so it reads as architecture rather than a painted panel.
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "rgba(120,120,120,1)");
+    g.addColorStop(0.55, "rgba(158,158,158,1)");
+    g.addColorStop(1, "rgba(186,186,186,1)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    const edge = ctx.createLinearGradient(0, 0, w, 0);
+    edge.addColorStop(0, "rgba(90,90,90,0.34)");
+    edge.addColorStop(0.08, "rgba(120,120,120,0)");
+    edge.addColorStop(0.92, "rgba(120,120,120,0)");
+    edge.addColorStop(1, "rgba(90,90,90,0.34)");
+    ctx.fillStyle = edge;
+    ctx.fillRect(0, 0, w, h);
+
+    const rand = seeded(431);
+    for (let i = 0; i < 90; i += 1) {
+      const x = rand() * w;
+      const y = rand() * h;
+      const r = 2 + rand() * 14;
+      const glow = rand() > 0.5;
+      const dot = ctx.createRadialGradient(x, y, 0, x, y, r);
+      dot.addColorStop(0, glow ? "rgba(255,245,225,0.05)" : "rgba(20,12,8,0.055)");
+      dot.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = dot;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  });
+}
+
+function wallWashTexture() {
+  return canvasTexture(512, 256, (ctx, w, h) => {
+    // Warm light descending from a concealed ceiling cove. The bright
+    // pools repeat gently along the hall so the wall never looks banded.
+    const base = ctx.createLinearGradient(0, 0, 0, h);
+    base.addColorStop(0, "rgba(255,214,160,0.95)");
+    base.addColorStop(0.08, "rgba(255,206,150,0.62)");
+    base.addColorStop(0.3, "rgba(248,188,128,0.24)");
+    base.addColorStop(0.64, "rgba(226,166,108,0.07)");
+    base.addColorStop(1, "rgba(226,166,108,0)");
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, w, h);
+
+    [96, 256, 416].forEach((x) => {
+      const pool = ctx.createRadialGradient(x, 16, 4, x, 16, 120);
+      pool.addColorStop(0, "rgba(255,230,190,0.4)");
+      pool.addColorStop(0.4, "rgba(255,214,164,0.12)");
+      pool.addColorStop(1, "rgba(255,214,164,0)");
+      ctx.fillStyle = pool;
+      ctx.fillRect(x - 130, 0, 260, 230);
+    });
+  });
+}
+
+function floorEdgeTexture() {
+  return canvasTexture(128, 32, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, "rgba(255,218,168,0.9)");
+    g.addColorStop(0.18, "rgba(255,208,152,0.44)");
+    g.addColorStop(0.55, "rgba(255,198,138,0.12)");
+    g.addColorStop(1, "rgba(255,198,138,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  });
+}
+
 function placeholderPhotoTexture() {
   return canvasTexture(640, 820, (ctx, w, h) => {
     const g = ctx.createLinearGradient(0, 0, w, h);
@@ -232,13 +303,89 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   const isMobile = window.matchMedia("(max-width: 760px)").matches;
   const ROMAN = ["I", "II", "III", "IV", "V", "VI"];
 
+  // Adaptive quality starts high and only steps down after several
+  // seconds of genuinely slow frames. Caps are per device class, but a
+  // capable phone is never forced into the lowest tier up front.
+  const qualityCaps = isMobile ? [0.8, 1.0, 1.25] : [1.0, 1.35, 2.0];
+  const quality = {
+    level: 2,
+    lastNow: 0,
+    sampleSeconds: 0,
+    sampleFrames: 0,
+    lastAverage: 16.7,
+    badStreak: 0,
+    goodStreak: 0,
+    cooldownUntil: 0,
+    raiseLockUntil: 0,
+    loweredAt: 0
+  };
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  function capForQuality(level) {
+    return Math.min(devicePixelRatio, qualityCaps[Math.max(0, Math.min(2, level))]);
+  }
+
+  let applyQualityExtras = () => {};
+
+  function applyQuality(level) {
+    const next = Math.max(0, Math.min(2, level));
+    if (next === quality.level) {
+      applyQualityExtras(next);
+      return;
+    }
+    quality.level = next;
+    renderer.setPixelRatio(capForQuality(next));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    applyQualityExtras(next);
+    quality.lastAverage = 16.7;
+    quality.badStreak = 0;
+    quality.goodStreak = 0;
+  }
+
+  // Only a sustained trend changes quality. Two slow windows in a row
+  // step down; a long, clearly comfortable stretch steps back up.
+  function evaluateQuality(averageMs, now) {
+    quality.lastAverage = averageMs;
+    if (now < quality.cooldownUntil) return;
+
+    if (averageMs > 22.5 && quality.level > 0) {
+      quality.badStreak += 1;
+      quality.goodStreak = 0;
+      if (quality.badStreak >= 2) {
+        if (now - quality.loweredAt < 20000) {
+          quality.raiseLockUntil = now + 12000;
+        }
+        quality.loweredAt = now;
+        applyQuality(quality.level - 1);
+        quality.cooldownUntil = now + 6500;
+      }
+      return;
+    }
+
+    if (averageMs > 19.5) {
+      quality.goodStreak = 0;
+      if (averageMs <= 22.5) quality.badStreak = Math.max(0, quality.badStreak - 1);
+      return;
+    }
+
+    quality.badStreak = 0;
+    if (averageMs < 18.0 && quality.level < 2 && now >= quality.raiseLockUntil) {
+      quality.goodStreak += 1;
+      if (quality.goodStreak >= 6) {
+        applyQuality(quality.level + 1);
+        quality.cooldownUntil = now + 7000;
+      }
+    } else {
+      quality.goodStreak = Math.max(0, quality.goodStreak - 1);
+    }
+  }
+
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: !isMobile,
     alpha: false,
     powerPreference: "high-performance"
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? (window.innerWidth < 380 ? 1.0 : 1.2) : 2));
+  renderer.setPixelRatio(capForQuality(quality.level));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -517,6 +664,258 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   addPoint(0, 3.2, -149, 0xffb978, 65, 14);
   addPoint(0, 4.5, -176, 0xffc47e, 90, 24);
   addPoint(0, 4.5, -212, 0xffd29a, 95, 24);
+
+  /* ------------------------------------------------------------
+     Architectural detail · wall panels, rails, warm cove light
+     ------------------------------------------------------------ */
+  // The paneling is built as instanced strips and inset planes: the
+  // richer walls cost two draw calls no matter how many panels there
+  // are. Nothing is placed in the walking path or over the artwork.
+
+  const panelInsetTex = panelInsetTexture();
+  const panelInsetMat = new THREE.MeshStandardMaterial({
+    map: panelInsetTex,
+    color: 0x5b4638,
+    roughness: 0.96,
+    metalness: 0.02,
+    emissive: 0x120a06,
+    emissiveIntensity: 0.22
+  });
+  const moldingMat = new THREE.MeshStandardMaterial({
+    color: 0x8f6d36,
+    roughness: 0.5,
+    metalness: 0.62,
+    emissive: 0x241606,
+    emissiveIntensity: 0.34
+  });
+
+  const detailDummy = new THREE.Object3D();
+  const trimMatrices = [];
+  const insetMatrices = [];
+  const insetTints = [];
+
+  function pushTrim(x, y, z, sx, sy, sz) {
+    detailDummy.position.set(x, y, z);
+    detailDummy.rotation.set(0, 0, 0);
+    detailDummy.scale.set(sx, sy, sz);
+    detailDummy.updateMatrix();
+    trimMatrices.push(detailDummy.matrix.clone());
+  }
+
+  function pushInset(x, y, z, width, height, rotationY, tint = 0xffffff) {
+    detailDummy.position.set(x, y, z);
+    detailDummy.rotation.set(0, rotationY, 0);
+    detailDummy.scale.set(width, height, 1);
+    detailDummy.updateMatrix();
+    insetMatrices.push(detailDummy.matrix.clone());
+    insetTints.push(tint);
+  }
+
+  // One panel outline plus its recessed face.
+  function addWallPanel(side, z, width, height, y, tint, innerBorder = false) {
+    const faceX = side * (9.2 - 0.062);
+    pushTrim(faceX, y + height / 2, z, 0.07, 0.045, width);
+    pushTrim(faceX, y - height / 2, z, 0.07, 0.045, width);
+    pushTrim(faceX, y, z - width / 2, 0.07, height, 0.045);
+    pushTrim(faceX, y, z + width / 2, 0.07, height, 0.045);
+    pushInset(side * (9.2 - 0.016), y, z, width - 0.06, height - 0.06, side < 0 ? Math.PI / 2 : -Math.PI / 2, tint);
+
+    if (innerBorder) {
+      const insetW = width - 0.46;
+      const insetH = height - 0.46;
+      pushTrim(faceX, y + insetH / 2, z, 0.045, 0.025, insetW);
+      pushTrim(faceX, y - insetH / 2, z, 0.045, 0.025, insetW);
+      pushTrim(faceX, y, z - insetW / 2, 0.045, insetH, 0.025);
+      pushTrim(faceX, y, z + insetW / 2, 0.045, insetH, 0.025);
+    }
+  }
+
+  const wallBays = [];
+  for (let z = 28 - pilasterStep; z >= -211; z -= pilasterStep) {
+    wallBays.push(z - pilasterStep / 2);
+  }
+
+  wallBays.forEach((bayZ, bayIndex) => {
+    // Leave the entrance bay calm and give the eye an occasional
+    // untouched stretch instead of papering every metre of wall.
+    if (bayZ > 11) return;
+
+    [-1, 1].forEach((side) => {
+      const pattern = (bayIndex + (side > 0 ? 1 : 0)) % 4;
+      const span = pilasterStep;
+
+      if (pattern === 3) {
+        // A single vertical brass reveal: quiet spatial variation.
+        pushTrim(side * (9.2 - 0.055), 3.55, bayZ, 0.055, 3.3, 0.035);
+        return;
+      }
+
+      if (pattern === 2) {
+        // Two stacked panels, smaller and more intimate.
+        const width = span - 5.1;
+        const tint = 0xd8c6b4;
+        addWallPanel(side, bayZ, width, 1.35, 4.62, tint);
+        addWallPanel(side, bayZ, width, 0.82, 2.98, 0xe0cebc);
+        return;
+      }
+
+      if (pattern === 0) {
+        // A pair of tall panels.
+        const gap = 1.15;
+        const width = (span - 4.5 - gap) / 2;
+        [-1, 1].forEach((offset) => {
+          addWallPanel(side, bayZ + offset * (width / 2 + gap / 2), width, 2.55, 3.7, 0xd4c1ae, offset > 0);
+        });
+        return;
+      }
+
+      // One generous panel per bay.
+      addWallPanel(side, bayZ, span - 4.9, 2.55, 3.7, 0xdccab8, true);
+    });
+  });
+
+  // Picture rail and a lower reveal tie the long walls together.
+  [-1, 1].forEach((side) => {
+    pushTrim(side * (9.2 - 0.055), 5.38, -102, 0.07, 0.045, 282);
+    pushTrim(side * (9.2 - 0.055), 5.52, -102, 0.07, 0.022, 282);
+    pushTrim(side * (9.2 - 0.055), 1.84, -102, 0.065, 0.028, 282);
+  });
+
+  // Two shallow panels behind the final wall keep the dance backdrop
+  // related to the rest of the museum without adding clutter.
+  [-4.35, 4.35].forEach((x, index) => {
+    const zFace = -223.56;
+    const width = 5.4;
+    const height = 3.35;
+    const y = 3.15;
+    const faceZ = zFace + 0.03;
+    pushTrim(x, y + height / 2, faceZ, width, 0.045, 0.07);
+    pushTrim(x, y - height / 2, faceZ, width, 0.045, 0.07);
+    pushTrim(x - width / 2, y, faceZ, 0.045, height, 0.07);
+    pushTrim(x + width / 2, y, faceZ, 0.045, height, 0.07);
+    pushInset(x, y, zFace, width - 0.06, height - 0.06, 0, index === 0 ? 0xd7c4b0 : 0xe2d0bc);
+    if (index === 0) {
+      pushTrim(x, y + 1.18, faceZ, width - 0.5, 0.022, 0.045);
+      pushTrim(x, y - 1.18, faceZ, width - 0.5, 0.022, 0.045);
+      pushTrim(x - width / 2 + 0.23, y, faceZ, 0.022, height - 0.5, 0.045);
+      pushTrim(x + width / 2 - 0.23, y, faceZ, 0.022, height - 0.5, 0.045);
+    }
+  });
+  pushTrim(0, 5.38, -223.56, 17.1, 0.05, 0.07);
+
+  const trimMesh = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    moldingMat,
+    Math.max(1, trimMatrices.length)
+  );
+  trimMesh.count = trimMatrices.length;
+  trimMatrices.forEach((matrix, index) => trimMesh.setMatrixAt(index, matrix));
+  trimMesh.instanceMatrix.needsUpdate = true;
+  trimMesh.frustumCulled = false;
+  scene.add(trimMesh);
+
+  const insetMesh = new THREE.InstancedMesh(
+    new THREE.PlaneGeometry(1, 1),
+    panelInsetMat,
+    Math.max(1, insetMatrices.length)
+  );
+  insetMesh.count = insetMatrices.length;
+  const insetColor = new THREE.Color();
+  insetMatrices.forEach((matrix, index) => {
+    insetMesh.setMatrixAt(index, matrix);
+    insetMesh.setColorAt(index, insetColor.setHex(insetTints[index]));
+  });
+  insetMesh.instanceMatrix.needsUpdate = true;
+  if (insetMesh.instanceColor) insetMesh.instanceColor.needsUpdate = true;
+  insetMesh.frustumCulled = false;
+  scene.add(insetMesh);
+
+  // Baked wall-wash planes. Additive light with no real lights added:
+  // warm cove pools above, a soft floor reveal below.
+  const wallWashTex = wallWashTexture();
+  wallWashTex.wrapS = THREE.RepeatWrapping;
+  const wallWashGroup = new THREE.Group();
+  wallWashGroup.renderOrder = 1;
+  [-1, 1].forEach((side) => {
+    const map = wallWashTex.clone();
+    map.needsUpdate = true;
+    map.wrapS = THREE.RepeatWrapping;
+    map.repeat.set(isMobile ? 4 : 7, 1);
+    const material = new THREE.MeshBasicMaterial({
+      map,
+      color: 0xffd9a8,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const wash = new THREE.Mesh(new THREE.PlaneGeometry(282, 6.2), material);
+    wash.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+    wash.position.set(side * (9.2 - 0.08), 3.2, -102);
+    wallWashGroup.add(wash);
+  });
+
+  // A gentler wash on the final wall so the dancer has depth behind it.
+  const finalWashMap = wallWashTex.clone();
+  finalWashMap.needsUpdate = true;
+  finalWashMap.wrapS = THREE.RepeatWrapping;
+  finalWashMap.repeat.set(2, 1);
+  const finalWash = new THREE.Mesh(
+    new THREE.PlaneGeometry(17.4, 6.2),
+    new THREE.MeshBasicMaterial({
+      map: finalWashMap,
+      color: 0xffd9a8,
+      transparent: true,
+      opacity: 0.24,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+  );
+  finalWash.position.set(0, 3.15, -223.48);
+  wallWashGroup.add(finalWash);
+  scene.add(wallWashGroup);
+
+  const edgeGlowTex = floorEdgeTexture();
+  const edgeGlowGroup = new THREE.Group();
+  edgeGlowGroup.renderOrder = 1;
+  [-1, 1].forEach((side) => {
+    const map = edgeGlowTex.clone();
+    map.needsUpdate = true;
+    if (side > 0) {
+      map.repeat.x = -1;
+      map.offset.x = 1;
+    }
+    const floorGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.6, 276),
+      new THREE.MeshBasicMaterial({
+        map,
+        color: 0xffcf96,
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      })
+    );
+    floorGlow.rotation.x = -Math.PI / 2;
+    floorGlow.position.set(side * 8.0, 0.018, -102);
+    edgeGlowGroup.add(floorGlow);
+
+    const strip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.045, 0.045, 276),
+      new THREE.MeshBasicMaterial({
+        color: 0xffcf9a,
+        transparent: true,
+        opacity: 0.52,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false
+      })
+    );
+    strip.position.set(side * 8.72, 0.075, -102);
+    edgeGlowGroup.add(strip);
+  });
+  scene.add(edgeGlowGroup);
 
   /* ------------------------------------------------------------
      Entrance
@@ -1005,6 +1404,36 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     addGlowSprite(0, 5.1, z, 1.5, 0xffd9a0, 0.55);
   });
 
+  // Soft light pools on the wall behind the gallery and memory pieces.
+  // One instanced additive mesh: a single extra draw call.
+  const wallPoolSpots = [
+    ...frameSlots.map((slot) => ({ x: slot.x, z: slot.z, y: 3.35, w: 7.2, h: 4.6 })),
+    ...memorySlots.map((slot) => ({ x: slot.x, z: slot.z, y: 2.9, w: 8.4, h: 5.4 }))
+  ];
+  const wallPoolMesh = new THREE.InstancedMesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({
+      map: glowTex,
+      color: 0xffd2a0,
+      transparent: true,
+      opacity: 0.2,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    }),
+    Math.max(1, wallPoolSpots.length)
+  );
+  wallPoolMesh.count = wallPoolSpots.length;
+  wallPoolSpots.forEach((spot, index) => {
+    detailDummy.position.set(Math.sign(spot.x) * (9.2 - 0.05), spot.y, spot.z);
+    detailDummy.rotation.set(0, spot.x < 0 ? Math.PI / 2 : -Math.PI / 2, 0);
+    detailDummy.scale.set(spot.w, spot.h, 1);
+    detailDummy.updateMatrix();
+    wallPoolMesh.setMatrixAt(index, detailDummy.matrix);
+  });
+  wallPoolMesh.instanceMatrix.needsUpdate = true;
+  wallPoolMesh.frustumCulled = false;
+  scene.add(wallPoolMesh);
+
   /* ------------------------------------------------------------
      IV · Letters for You
      ------------------------------------------------------------ */
@@ -1352,8 +1781,8 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   heart.position.set(0, 3.1, -219.4);
   heart.scale.setScalar(1.45);
   scene.add(heart);
-  addGlowSprite(0, 3.1, -220.1, 9, 0xffb98f, 0.45);
-  addGlowSprite(0, 3.1, -219.7, 4.2, 0xffd9a0, 0.4);
+  const heartGlowWide = addGlowSprite(0, 3.1, -220.1, 9, 0xffb98f, 0.45);
+  const heartGlowCore = addGlowSprite(0, 3.1, -219.7, 4.2, 0xffd9a0, 0.4);
 
   const halo = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.028, 8, 96), new THREE.MeshBasicMaterial({ color: 0xf0d9a4, transparent: true, opacity: 0.7, toneMapped: false }));
   halo.position.set(0, 3.1, -219.75);
@@ -1394,32 +1823,155 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   surpriseGroup.scale.setScalar(0.001);
   scene.add(surpriseGroup);
 
-  const surpriseBodyMat = new THREE.MeshStandardMaterial({ color: 0x7a5a9a, roughness: 0.55, metalness: 0.12, emissive: 0x2a1a3a, emissiveIntensity: 0.35 });
-  const surpriseBody = addBox(0.7, 1.05, 0.45, surpriseBodyMat, 0, 1.35, 0, surpriseGroup);
-  const surpriseBelly = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 18), surpriseBodyMat);
-  surpriseBelly.position.set(0, 1.35, 0.12);
-  surpriseBelly.scale.set(1, 0.9, 0.7);
-  surpriseGroup.add(surpriseBelly);
+  // --- Stylised dancer -------------------------------------------------
+  // Soft capsule limbs pivoted at the shoulder and hip, a rounded torso
+  // and a larger head read as one designed character instead of a pile
+  // of boxes. Everything shares three small materials.
+  const surpriseBodyMat = new THREE.MeshStandardMaterial({
+    color: 0x8b67ad,
+    roughness: 0.46,
+    metalness: 0.08,
+    emissive: 0x2a1838,
+    emissiveIntensity: 0.42
+  });
+  const surpriseHeadMat = new THREE.MeshStandardMaterial({
+    color: 0xd8c4ea,
+    roughness: 0.52,
+    metalness: 0.04,
+    emissive: 0x2a1a38,
+    emissiveIntensity: 0.32
+  });
+  const surpriseTrimMat = new THREE.MeshStandardMaterial({
+    color: 0xf0d9a4,
+    roughness: 0.32,
+    metalness: 0.55,
+    emissive: 0x4a3410,
+    emissiveIntensity: 0.5,
+    side: THREE.DoubleSide
+  });
+  const surpriseShoeMat = new THREE.MeshStandardMaterial({
+    color: 0x4a305e,
+    roughness: 0.44,
+    metalness: 0.12,
+    emissive: 0x180c22,
+    emissiveIntensity: 0.36
+  });
 
-  const surpriseHeadMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0.02, emissive: 0x2a1c13, emissiveIntensity: 0.2 });
-  const surpriseHead = new THREE.Mesh(new THREE.SphereGeometry(0.38, 24, 24), surpriseHeadMat);
-  surpriseHead.position.set(0, 2.15, 0);
-  surpriseGroup.add(surpriseHead);
+  // Rounded torso / belly.
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 0.42, 8, 24), surpriseBodyMat);
+  torso.position.set(0, 1.32, 0);
+  torso.scale.set(1, 1, 0.74);
+  surpriseGroup.add(torso);
 
-  // Photo face (replaceable).
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.31, 22, 18), surpriseBodyMat);
+  belly.position.set(0, 1.08, 0.13);
+  belly.scale.set(1.12, 0.86, 0.72);
+  surpriseGroup.add(belly);
+
+  // A soft collar where the neck meets the body.
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.145, 0.028, 6, 24), surpriseTrimMat);
+  collar.rotation.x = Math.PI / 2;
+  collar.position.set(0, 1.9, 0);
+  surpriseGroup.add(collar);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.12, 0.2, 16), surpriseHeadMat);
+  neck.position.set(0, 1.92, 0);
+  surpriseGroup.add(neck);
+
+  // Head group so the portrait face turns with the head.
+  const headGroup = new THREE.Group();
+  headGroup.position.set(0, 2.2, 0);
+  surpriseGroup.add(headGroup);
+
+  const surpriseHead = new THREE.Mesh(new THREE.SphereGeometry(0.47, 32, 26), surpriseHeadMat);
+  headGroup.add(surpriseHead);
+
+  // A rounded-rectangle portrait, projected onto the head so it hugs
+  // the skull instead of hovering like a flat sticker. The gold
+  // backplate is the same curved panel, slightly larger, so only a
+  // neat border shows around the photograph.
+  const FACE_W = 0.47;
+  const FACE_H = 0.626;
+  const HEAD_R = 0.47;
+
+  const roundedFaceMask = canvasTexture(256, 342, (ctx, w, h) => {
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, w, h);
+    const r = 38;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(w - r, 0);
+    ctx.quadraticCurveTo(w, 0, w, r);
+    ctx.lineTo(w, h - r);
+    ctx.quadraticCurveTo(w, h, w - r, h);
+    ctx.lineTo(r, h);
+    ctx.quadraticCurveTo(0, h, 0, h - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+  });
+  roundedFaceMask.wrapS = roundedFaceMask.wrapT = THREE.ClampToEdgeWrapping;
+
+  function curvedPanelGeometry(width, height, lift) {
+    // A subdivided panel keeps the surface on the outside of the
+    // sphere; a shape with only border vertices would chord through it.
+    const geometry = new THREE.PlaneGeometry(width, height, 22, 30);
+    const position = geometry.attributes.position;
+    for (let i = 0; i < position.count; i += 1) {
+      const x = position.getX(i);
+      const y = position.getY(i);
+      const z = Math.sqrt(Math.max(0.0001, HEAD_R * HEAD_R - x * x - y * y)) + lift;
+      position.setZ(i, z);
+    }
+    position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    return geometry;
+  }
+
   const faceTexture = placeholderPhotoTexture();
-  const faceMaterial = new THREE.MeshStandardMaterial({ map: faceTexture, color: 0xffffff, roughness: 0.5, metalness: 0.02 });
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55), faceMaterial);
-  face.position.set(0, 2.15, 0.45);
-  surpriseGroup.add(face);
+  const faceMaterial = new THREE.MeshStandardMaterial({
+    map: faceTexture,
+    alphaMap: roundedFaceMask,
+    color: 0xffffff,
+    roughness: 0.52,
+    metalness: 0.02,
+    emissive: 0x1a1018,
+    emissiveIntensity: 0.18,
+    transparent: true,
+    alphaTest: 0.08,
+    side: THREE.DoubleSide
+  });
+  const face = new THREE.Mesh(curvedPanelGeometry(FACE_W, FACE_H, 0.02), faceMaterial);
+  face.position.set(0, 0, 0);
+  face.renderOrder = 2;
+  headGroup.add(face);
+
+  const faceFrameMat = new THREE.MeshStandardMaterial({
+    color: 0xf0d9a4,
+    roughness: 0.32,
+    metalness: 0.58,
+    emissive: 0x4a3410,
+    emissiveIntensity: 0.55,
+    alphaMap: roundedFaceMask,
+    transparent: true,
+    alphaTest: 0.08,
+    side: THREE.DoubleSide
+  });
+  const faceFrame = new THREE.Mesh(curvedPanelGeometry(FACE_W + 0.075, FACE_H + 0.075, 0.012), faceFrameMat);
+  faceFrame.position.set(0, 0, 0);
+  faceFrame.renderOrder = 1;
+  headGroup.add(faceFrame);
 
   const faceLoader = new THREE.TextureLoader();
   faceLoader.load("assets/images/surprise/surprise-head.jpg", (texture) => {
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     const image = texture.image;
     if (image?.width && image?.height) {
       const aspect = image.width / image.height;
-      const target = 1;
+      const target = FACE_W / FACE_H;
       if (aspect < target) {
         texture.repeat.y = aspect / target;
         texture.offset.y = (1 - texture.repeat.y) / 2;
@@ -1432,27 +1984,72 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     faceMaterial.needsUpdate = true;
   });
 
-  function makeLimb(x, y, z, w, h, d) {
-    const mesh = addBox(w, h, d, surpriseBodyMat, x, y, z, surpriseGroup);
-    return mesh;
-  }
-  const armL = makeLimb(-0.55, 1.55, 0, 0.16, 0.7, 0.16);
-  const armR = makeLimb(0.55, 1.55, 0, 0.16, 0.7, 0.16);
-  const legL = makeLimb(-0.22, 0.62, 0, 0.18, 0.75, 0.18);
-  const legR = makeLimb(0.22, 0.62, 0, 0.18, 0.75, 0.18);
+  // A shoulder / hip pivot makes swinging limbs stay connected.
+  function makeLimbPivot(x, y, radius, length, material, cap = true) {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, y, 0);
+    surpriseGroup.add(pivot);
 
-  const surpriseLight = addVisualSpot(4.6, 6.0, -215, new THREE.Vector3(4.6, 2.0, -219.2), { intensity: 180, distance: 20, angle: 0.45, penumbra: 0.9, color: 0xffd39a });
-  addGlowSprite(4.6, 2.15, -219.0, 2.6, 0xffd9a0, 0.35);
+    if (cap) {
+      const joint = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.28, 16, 12), material);
+      pivot.add(joint);
+    }
+
+    const limb = new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, 6, 16), material);
+    limb.position.y = -(length / 2 + radius);
+    pivot.add(limb);
+    return pivot;
+  }
+
+  const armL = makeLimbPivot(-0.355, 1.62, 0.082, 0.4, surpriseBodyMat);
+  const armR = makeLimbPivot(0.355, 1.62, 0.082, 0.4, surpriseBodyMat);
+  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.105, 14, 12), surpriseHeadMat);
+  handL.position.y = -0.57;
+  armL.add(handL);
+  const handR = new THREE.Mesh(new THREE.SphereGeometry(0.105, 14, 12), surpriseHeadMat);
+  handR.position.y = -0.57;
+  armR.add(handR);
+
+  const legL = makeLimbPivot(-0.175, 0.78, 0.095, 0.38, surpriseBodyMat);
+  const legR = makeLimbPivot(0.175, 0.78, 0.095, 0.38, surpriseBodyMat);
+  [legL, legR].forEach((leg) => {
+    const shoe = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), surpriseShoeMat);
+    shoe.position.set(0, -0.61, 0.055);
+    shoe.scale.set(1, 0.58, 1.42);
+    leg.add(shoe);
+  });
+
+  // Arm rest pose: slightly away from the body.
+  armL.rotation.z = -0.18;
+  armR.rotation.z = 0.18;
+  legL.rotation.z = 0.04;
+  legR.rotation.z = -0.04;
+
+  const surpriseLight = addVisualSpot(4.6, 6.0, -215, new THREE.Vector3(4.6, 2.0, -219.2), { intensity: 160, distance: 20, angle: 0.45, penumbra: 0.9, color: 0xffd39a });
+  addGlowSprite(4.6, 2.05, -219.9, 3.4, 0xffd0a0, 0.2);
+  addGlowSprite(4.6, 1.75, -218.85, 2.3, 0xffe0b0, 0.12);
+
 
   let surpriseMode = false;
   let surpriseDancing = false;
   let surpriseTime = 0;
+
+  const finalRoomDecor = [finalHeading, finalSub, heart, halo, heartGlowWide, heartGlowCore];
+  function setFinalRoomDecor(visible) {
+    finalRoomDecor.forEach((object) => {
+      object.visible = visible;
+    });
+  }
 
   function revealSurprise() {
     surpriseGroup.visible = true;
     surpriseMode = true;
     surpriseDancing = true;
     surpriseTime = 0;
+    surpriseGroup.position.set(4.6, 0, -219.2);
+    // Give the dancer a clean backdrop: the old 3D greeting and the
+    // heart stay in the room, but they step out of the composition.
+    setFinalRoomDecor(false);
   }
 
   function setSurpriseDancing(value) {
@@ -1464,8 +2061,14 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     surpriseDancing = false;
     surpriseGroup.visible = false;
     surpriseGroup.scale.setScalar(0.001);
-    surpriseGroup.position.y = 0;
-    surpriseGroup.rotation.y = 0;
+    surpriseGroup.position.set(4.6, 0, -219.2);
+    surpriseGroup.rotation.set(0, 0, 0);
+    headGroup.rotation.set(0, 0, 0);
+    armL.rotation.set(0, 0, -0.18);
+    armR.rotation.set(0, 0, 0.18);
+    legL.rotation.set(0, 0, 0.04);
+    legR.rotation.set(0, 0, -0.04);
+    setFinalRoomDecor(true);
   }
 
   // Store on scene for external access.
@@ -1605,7 +2208,8 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
       speed: 0.16 + lanternSeeds() * 0.24,
       familyIndex,
       halo,
-      haloOpacity
+      haloOpacity,
+      floorIndex: i
     });
   }
 
@@ -1628,6 +2232,38 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   );
   lanternStrings.frustumCulled = false;
   scene.add(lanternStrings);
+
+  // Faint pools of lantern light on the floor. One instanced additive
+  // plane for the whole collection: a single extra draw call, no real
+  // lights, and it makes the polished floor feel lit from above.
+  const lanternFloorDummy = new THREE.Object3D();
+  const lanternFloorMesh = new THREE.InstancedMesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({
+      map: lanternGlowTex,
+      transparent: true,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false
+    }),
+    lanternList.length
+  );
+  const lanternFloorTint = new THREE.Color();
+  lanternList.forEach((item, index) => {
+    const family = lanternFamilies[item.familyIndex];
+    lanternFloorTint.setHex(family.halo).multiplyScalar(family.accent ? 0.12 : 0.2);
+    lanternFloorMesh.setColorAt(index, lanternFloorTint);
+    lanternFloorDummy.position.set(item.x, 0.028, item.z + 0.18);
+    lanternFloorDummy.rotation.set(-Math.PI / 2, 0, 0);
+    lanternFloorDummy.scale.set(item.scaleX * LANTERN_W * 2.4, item.scaleX * LANTERN_W * 4.1, 1);
+    lanternFloorDummy.updateMatrix();
+    lanternFloorMesh.setMatrixAt(index, lanternFloorDummy.matrix);
+  });
+  lanternFloorMesh.instanceMatrix.needsUpdate = true;
+  if (lanternFloorMesh.instanceColor) lanternFloorMesh.instanceColor.needsUpdate = true;
+  lanternFloorMesh.frustumCulled = false;
+  scene.add(lanternFloorMesh);
 
   // Group the lanterns by colour family and build one instanced mesh
   // per family (6 draw calls total at most).
@@ -1799,6 +2435,21 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   scene.add(petalPoints);
   petals.push({ points: petalPoints, speeds: petalSpeeds });
 
+  // Effects that can step out at the lowest tier without touching the
+  // architecture, photographs, lantern bodies or event schedule.
+  applyQualityExtras = (level) => {
+    const low = level === 0;
+    dust.visible = !low;
+    petalPoints.visible = !low;
+    lanternFloorMesh.visible = !low;
+    edgeGlowGroup.visible = !low;
+    lanternList.forEach((item) => {
+      item.halo.visible = !low;
+    });
+    if (wallWashGroup) wallWashGroup.visible = true;
+  };
+  applyQualityExtras(quality.level);
+
   /* ------------------------------------------------------------
      Camera, scroll binding, animation
      ------------------------------------------------------------ */
@@ -1894,8 +2545,8 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   function onResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    renderer.setPixelRatio(capForQuality(quality.level));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 380 ? 1.0 : (window.innerWidth < 760 ? 1.2 : 2)));
     if (active) rebuildPath();
   }
 
@@ -1923,10 +2574,36 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   function tick() {
     const raf = requestAnimationFrame(tick);
     tick.raf = raf;
-    if (document.hidden) return;
+    if (document.hidden) {
+      quality.lastNow = 0;
+      quality.sampleSeconds = 0;
+      quality.sampleFrames = 0;
+      return;
+    }
     const unlockScreen = document.getElementById("screen-unlock");
     const unlockVisible = !!unlockScreen && !unlockScreen.hidden;
-    if (!active && !unlockVisible) return;
+    if (!active && !unlockVisible) {
+      quality.lastNow = 0;
+      return;
+    }
+
+    if (active) {
+      const nowMs = performance.now();
+      const frameMs = quality.lastNow ? nowMs - quality.lastNow : 16.7;
+      quality.lastNow = nowMs;
+      if (frameMs > 0 && frameMs < 250) {
+        quality.sampleSeconds += frameMs / 1000;
+        quality.sampleFrames += 1;
+        if (quality.sampleSeconds >= 1.25 && quality.sampleFrames > 8) {
+          evaluateQuality((quality.sampleSeconds * 1000) / quality.sampleFrames, nowMs);
+          quality.sampleSeconds = 0;
+          quality.sampleFrames = 0;
+        }
+      }
+    } else {
+      quality.lastNow = 0;
+    }
+
     const time = clock.getElapsedTime();
     const delta = Math.min(0.05, Math.max(0, time - lastTime));
     lastTime = time;
@@ -1940,8 +2617,23 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     const sample = keys.length ? sampleCameraPath(keys, smoothProgress) : ENTRANCE;
 
     if (surpriseMode) {
-      desiredPosition.set(4.6, 2.0, -215.5);
-      desiredLook.set(4.6, 1.7, -219.2);
+      // Frame the dancer to the safe area of the current viewport: on
+      // tall phones and short landscape windows the camera steps back
+      // so the character sits above the fixed action row.
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      const portrait = vh >= vw * 1.08;
+      const short = vh < 620;
+      if (portrait) {
+        desiredPosition.set(4.6, 2.1, -215.5);
+        desiredLook.set(4.6, 1.335, -219.2);
+      } else if (short) {
+        desiredPosition.set(4.6, 1.95, -213.4);
+        desiredLook.set(4.6, 0.85, -219.2);
+      } else {
+        desiredPosition.set(4.6, 2.0, -215.6);
+        desiredLook.set(4.6, 1.15, -219.2);
+      }
     } else {
 
     const idle = reducedMotion ? 0 : 1;
@@ -2065,11 +2757,17 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
       surpriseGroup.scale.z += (targetScale - surpriseGroup.scale.z) * 0.12;
       if (surpriseDancing) {
         surpriseTime += delta;
-        surpriseGroup.position.y = Math.sin(surpriseTime * 6) * 0.12;
-        surpriseGroup.rotation.y = Math.sin(surpriseTime * 2.2) * 0.35;
-        surpriseHead.rotation.z = Math.sin(surpriseTime * 4) * 0.25;
-        armL.rotation.z = Math.sin(surpriseTime * 5) * 0.9 - 0.3;
-        armR.rotation.z = -Math.sin(surpriseTime * 5) * 0.9 + 0.3;
+        surpriseGroup.position.x = 4.6 + Math.sin(surpriseTime * 2.2) * 0.045;
+        surpriseGroup.position.y = Math.sin(surpriseTime * 6) * 0.1;
+        surpriseGroup.rotation.y = Math.sin(surpriseTime * 2.2) * 0.16;
+        headGroup.rotation.z = Math.sin(surpriseTime * 4) * 0.14;
+        headGroup.rotation.y = Math.sin(surpriseTime * 2.6 + 0.8) * 0.09;
+        armL.rotation.z = Math.sin(surpriseTime * 5) * 0.95 - 0.3;
+        armR.rotation.z = -Math.sin(surpriseTime * 5) * 0.95 + 0.3;
+        legL.rotation.z = Math.sin(surpriseTime * 5 + Math.PI) * 0.2;
+        legR.rotation.z = -Math.sin(surpriseTime * 5 + Math.PI) * 0.2;
+        legL.rotation.x = Math.sin(surpriseTime * 2.5) * 0.1;
+        legR.rotation.x = -Math.sin(surpriseTime * 2.5) * 0.1;
       } else {
         surpriseGroup.position.y *= 0.9;
         surpriseGroup.rotation.y *= 0.9;
@@ -2096,10 +2794,17 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
       rebuildPath();
       smoothProgress = 0;
       targetProgress = 0;
+      // Ignore the first few seconds of shader warm-up and camera
+      // settling so quality never drops because of a one-off compile.
+      quality.lastNow = 0;
+      quality.sampleSeconds = 0;
+      quality.sampleFrames = 0;
+      quality.cooldownUntil = performance.now() + 4000;
     } else {
       smoothProgress = 0;
       targetProgress = 0;
       keys = [];
+      quality.lastNow = 0;
     }
   }
 
@@ -2141,6 +2846,15 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     revealSurprise: () => { if (typeof revealSurprise === "function") revealSurprise(); },
     resetSurprise: () => { if (typeof resetSurprise === "function") resetSurprise(); },
     setSurpriseDancing: (value) => { if (typeof setSurpriseDancing === "function") setSurpriseDancing(value); },
+    getQuality: () => ({
+      level: quality.level,
+      pixelRatio: renderer.getPixelRatio(),
+      averageFrameMs: Number(quality.lastAverage.toFixed(2))
+    }),
+    setQuality: (level) => {
+      applyQuality(level);
+      quality.cooldownUntil = performance.now() + 6000;
+    },
     camera,
     renderer,
     scene,

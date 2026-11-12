@@ -449,6 +449,13 @@ export function createInteractions(content, {
 
   /* ---------------- Final room ---------------- */
 
+  const finalChapter = document.getElementById("chapter-final");
+
+  function setDancingPresentation(active) {
+    finalChapter?.classList.toggle("is-dancing", Boolean(active));
+    document.body.classList.toggle("is-dancing", Boolean(active));
+  }
+
   document.getElementById("replay-button")?.addEventListener("click", () => {
     if (onReplay) {
       onReplay();
@@ -460,6 +467,7 @@ export function createInteractions(content, {
   });
 
   document.getElementById("doors-button")?.addEventListener("click", () => {
+    resetSurprise();
     resetSeenPanels();
     if (scrollToChapter) scrollToChapter(0);
     if (scrollToTop) scrollToTop();
@@ -477,6 +485,7 @@ export function createInteractions(content, {
     const scene = getScene();
     scene?.resetSurprise?.();
     scene?.revealSurprise?.();
+    setDancingPresentation(true);
     finalSurprisePlayer.preload?.();
     const tryPlay = () => {
       const played = finalSurprisePlayer.play();
@@ -494,6 +503,7 @@ export function createInteractions(content, {
 
   function resetSurprise() {
     finalSurprisePlayer.stop();
+    setDancingPresentation(false);
     getScene?.()?.setSurpriseDancing?.(false);
     getScene?.()?.resetSurprise?.();
   }

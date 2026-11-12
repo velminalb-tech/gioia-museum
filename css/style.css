@@ -3244,14 +3244,7 @@ button.float-label.is-visible {
 }
 
 .final-cinema {
-  pointer-events: none;
   position: relative;
-}
-
-.final-cinema .btn,
-.final-cinema #final-read-letter {
-  pointer-events: auto;
-}
   width: min(760px, 100%);
   max-height: calc(100svh - 9.6rem);
   padding: clamp(1.2rem, 4vw, 2.8rem);
@@ -3260,6 +3253,11 @@ button.float-label.is-visible {
   scrollbar-width: thin;
   scrollbar-color: rgba(201, 164, 92, 0.35) transparent;
   text-align: center;
+  pointer-events: none;
+}
+
+.final-cinema .btn,
+.final-cinema #final-read-letter {
   pointer-events: auto;
 }
 
@@ -3374,6 +3372,65 @@ button.float-label.is-visible {
   }
 }
 
+/* ---------- Dancing surprise: clean stage, buttons below ---------- */
+
+.chapter--final.is-dancing .final-cinema {
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+}
+
+.chapter--final.is-dancing .final-cinema__kicker,
+.chapter--final.is-dancing .final-cinema__title,
+.chapter--final.is-dancing .final-cinema__lede,
+.chapter--final.is-dancing .final-read-letter,
+.chapter--final.is-dancing .final-closing,
+.chapter--final.is-dancing .final-signoff,
+.chapter--final.is-dancing .final-letter {
+  display: none !important;
+}
+
+.chapter--final.is-dancing .final-cinema::before {
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(9, 5, 4, 0.32), rgba(9, 5, 4, 0.06) 58%, transparent 78%),
+    linear-gradient(180deg, transparent 0%, transparent 62%, rgba(9, 5, 4, 0.5) 100%);
+}
+
+.chapter--final.is-dancing .final-actions {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  bottom: calc(0.9rem + var(--safe-bottom));
+  z-index: 30;
+  width: max-content;
+  max-width: calc(100vw - 1.4rem);
+  margin: 0;
+  padding: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.55));
+  animation: none !important;
+}
+
+.chapter--final.is-dancing .final-actions .btn {
+  width: auto;
+  min-height: 40px;
+  padding: 0.65rem 1rem;
+}
+
+body.is-dancing .float-layer,
+body.is-dancing .music-dock,
+body.is-dancing .preview-chip,
+body.is-dancing .exhibit-panel,
+body.is-dancing .museum-bar,
+body.is-dancing .scroll-cue {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
 /* The new stages and labels follow the same click-through rules as before. */
 .museum,
 .chapter,
@@ -3383,7 +3440,6 @@ button.float-label.is-visible {
 
 .exhibit-panel,
 .float-label.is-visible,
-.final-cinema,
 .wish-star {
   pointer-events: auto;
 }
