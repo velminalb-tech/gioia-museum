@@ -1438,7 +1438,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
      IV · Letters for You
      ------------------------------------------------------------ */
 
-  const letters = (content.letters?.letters || []).slice(0, 5);
+  const letters = (content.letters?.letters || []).slice(0, 10);
   const paper = new THREE.MeshStandardMaterial({ color: 0xf1e2c8, roughness: 0.86, metalness: 0.01, emissive: 0x3a2b16, emissiveIntensity: 0.28 });
   const wax = new THREE.MeshStandardMaterial({ color: 0x9d5a51, roughness: 0.38, metalness: 0.12, emissive: 0x3a120e, emissiveIntensity: 0.4 });
 
@@ -1472,10 +1472,17 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   addGlowSprite(0, 4.2, -153.8, 4.4, 0xffd9a0, 0.14);
 
   const desk = new THREE.Group();
-  addBox(4.6, 0.16, 1.8, wood, 0, 1.02, 0, desk);
+  // The top is pitched back a few degrees so the surface faces the camera
+  // and the letters resting on it are easier to read from the walkway.
+  const DESK_TILT = 0.13;
+  const deskSurface = new THREE.Group();
+  deskSurface.position.set(0, 1.02, 0);
+  deskSurface.rotation.x = DESK_TILT;
+  desk.add(deskSurface);
+  addBox(4.6, 0.16, 1.8, wood, 0, 0, 0, deskSurface);
   addBox(0.18, 1.0, 1.5, woodDark, -2.1, 0.5, 0, desk);
   addBox(0.18, 1.0, 1.5, woodDark, 2.1, 0.5, 0, desk);
-  addBox(4.3, 0.08, 1.55, gold, 0, 0.92, 0, desk);
+  addBox(4.3, 0.08, 1.55, gold, 0, -0.1, 0, deskSurface);
   desk.position.set(0, 0, -149.6);
   scene.add(desk);
 
@@ -1491,24 +1498,41 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   }
 
   letters.forEach((letter, index) => {
+    // The first five letters sit on the desk; the rest float around the
+    // room. Each 3D envelope opens its own letter, so all ten are unique.
+    const floatingIndex = index - 5;
+    const isFloating = floatingIndex >= 0;
+    const slot = isFloating ? floatingIndex : index;
     const env = makeEnvelope();
-    const x = -1.75 + index * 0.88;
-    env.group.position.set(x, 1.14, -149.55 + (index % 2 === 0 ? 0.12 : -0.12));
-    env.group.rotation.y = (index % 2 === 0 ? -1 : 1) * 0.12;
-    scene.add(env.group);
-    selectable(env.body, { type: "letter", index, key: `letter-${index}` });
+    let labelPosition;
 
-    const floating = makeEnvelope();
-    floating.group.position.set(
-      index % 2 === 0 ? -2.2 - (index % 3) * 0.25 : 2.2 + (index % 3) * 0.25,
-      2.35 + (index % 3) * 0.36,
-      -147.2 - index * 0.85
-    );
-    floating.group.rotation.set(-0.35, index % 2 === 0 ? 0.5 : -0.5, 0.08);
-    floating.group.scale.setScalar(0.9);
-    scene.add(floating.group);
-    floaters.push({ group: floating.group, baseY: floating.group.position.y, phase: index * 1.7 });
-    selectable(floating.body, { type: "letter", index, key: `letter-${index}` });
+    if (isFloating) {
+      const x = slot % 2 === 0 ? -2.2 - (slot % 3) * 0.25 : 2.2 + (slot % 3) * 0.25;
+      const y = 2.35 + (slot % 3) * 0.36;
+      const z = -147.2 - slot * 0.85;
+      env.group.position.set(x, y, z);
+      env.group.rotation.set(-0.35, slot % 2 === 0 ? 0.5 : -0.5, 0.08);
+      env.group.scale.setScalar(0.9);
+      labelPosition = new THREE.Vector3(x, y + 0.42, z);
+      scene.add(env.group);
+    } else {
+      const x = -1.75 + slot * 0.88;
+      const z = 0.05 + (slot % 2 === 0 ? 0.12 : -0.12);
+      env.group.position.set(x, 0.12, z);
+      env.group.rotation.y = (slot % 2 === 0 ? -1 : 1) * 0.12;
+      deskSurface.add(env.group);
+      env.group.updateWorldMatrix(true, false);
+      labelPosition = env.group
+        .getWorldPosition(new THREE.Vector3())
+        .add(new THREE.Vector3(0, 0.52, 0));
+    }
+
+    const payload = { type: "letter", index, key: `letter-${index}` };
+    selectable(env.body, payload);
+
+    if (isFloating) {
+      floaters.push({ group: env.group, baseY: env.group.position.y, phase: slot * 1.7 });
+    }
 
     addLabelAnchor({
       key: `letter-${index}`,
@@ -1519,28 +1543,31 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
       kicker: `Letter ${String(index + 1).padStart(2, "0")}`,
       caption: letter.title || "",
       hint: "Open the letter",
-      position: new THREE.Vector3(x, 1.7, -149.4),
-      payload: { type: "letter", index, key: `letter-${index}` },
-      maxDistance: 12,
+      position: labelPosition,
+      payload,
+      maxDistance: isFloating ? 16 : 12,
       priority: 14
     });
   });
 
+  const lampLocalZ = -0.55;
+  const lampSurfaceY = 1.02 + 0.08 * Math.cos(DESK_TILT) - lampLocalZ * Math.sin(DESK_TILT);
+  const lampLift = lampSurfaceY + 0.03 - 1.13;
   const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 0.06, 20), gold);
-  lampBase.position.set(-1.75, 1.13, -150.15);
+  lampBase.position.set(-1.75, 1.13 + lampLift, -150.15);
   scene.add(lampBase);
-  const lampStem = addBox(0.035, 0.7, 0.035, gold, -1.75, 1.48, -150.15);
+  const lampStem = addBox(0.035, 0.7, 0.035, gold, -1.75, 1.48 + lampLift, -150.15);
   lampStem.material = gold;
   const lampShade = new THREE.Mesh(
     new THREE.ConeGeometry(0.32, 0.35, 24, 1, true),
     new THREE.MeshStandardMaterial({ color: 0xe8c3a0, roughness: 0.7, side: THREE.DoubleSide, emissive: 0x6a3a10, emissiveIntensity: 0.25 })
   );
-  lampShade.position.set(-1.75, 1.85, -150.15);
+  lampShade.position.set(-1.75, 1.85 + lampLift, -150.15);
   lampShade.rotation.x = Math.PI;
   scene.add(lampShade);
-  const lampGlow = addGlowSprite(-1.75, 1.72, -150.15, 1.7, 0xffbb78, 0.7);
+  const lampGlow = addGlowSprite(-1.75, 1.72 + lampLift, -150.15, 1.7, 0xffbb78, 0.7);
   lampGlow.userData.pulse = true;
-  const lampLight = addPoint(-1.75, 1.72, -150.15, 0xffb768, 36, 8, 1.8);
+  const lampLight = addPoint(-1.75, 1.72 + lampLift, -150.15, 0xffb768, 36, 8, 1.8);
 
   /* ------------------------------------------------------------
      V · The Celebration Room
@@ -2025,6 +2052,115 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   legL.rotation.z = 0.04;
   legR.rotation.z = -0.04;
 
+  // --- Party dressing: floating laugh captions and an overhead beam ---
+  // Six lightweight sprites share small canvas textures. They live inside
+  // the surprise group so they reveal, scale and hide with the dancer.
+  const laughWords = [
+    { text: "HAHAHA", color: 0xffc9dc, x: -0.82, y: 2.42, z: 0.42, width: 0.62, rotation: -0.14, phase: 0.0 },
+    { text: "HA!", color: 0xffe3ae, x: 0.82, y: 2.52, z: 0.3, width: 0.44, rotation: 0.12, phase: 1.4 },
+    { text: "LOL", color: 0xc9ecff, x: -0.82, y: 1.0, z: 0.5, width: 0.5, rotation: 0.1, phase: 2.1 },
+    { text: "hehe", color: 0xe0ccff, x: 0.82, y: 0.95, z: 0.5, width: 0.52, rotation: -0.1, phase: 3.0 },
+    { text: "♪", color: 0xfff0c4, x: 0.96, y: 1.7, z: 0.32, width: 0.3, rotation: 0.22, phase: 4.2 },
+    { text: "!!", color: 0xffb8c9, x: -0.96, y: 1.66, z: 0.32, width: 0.32, rotation: -0.2, phase: 5.1 }
+  ];
+
+  function laughTexture(text) {
+    return canvasTexture(320, 160, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const size = text.length > 4 ? 74 : 104;
+      ctx.font = `900 ${size}px Jost, Arial, sans-serif`;
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 16;
+      ctx.strokeStyle = "rgba(26,10,20,0.9)";
+      ctx.strokeText(text, w / 2, h / 2 + 4);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(text, w / 2, h / 2 + 4);
+    });
+  }
+
+  const laughGroup = new THREE.Group();
+  laughGroup.visible = false;
+  surpriseGroup.add(laughGroup);
+
+  const laughSprites = laughWords.map((word) => {
+    const material = new THREE.SpriteMaterial({
+      map: laughTexture(word.text),
+      color: word.color,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      toneMapped: false
+    });
+    material.rotation = word.rotation;
+    const sprite = new THREE.Sprite(material);
+    sprite.position.set(word.x, word.y, word.z);
+    sprite.scale.set(word.width, word.width * 0.5, 1);
+    sprite.renderOrder = 4;
+    sprite.userData = { ...word, baseX: word.x, baseY: word.y, baseZ: word.z, height: word.width * 0.5 };
+    laughGroup.add(sprite);
+    return sprite;
+  });
+
+  // A warm, soft-edged beam from above. Two open cone shells plus a floor
+  // pool sell the light with three basic transparent draw calls and no
+  // extra real-time light or shadow.
+  const danceSpot = new THREE.Group();
+  danceSpot.position.set(4.6, 0, -219.2);
+  danceSpot.visible = false;
+  scene.add(danceSpot);
+
+  const spotShaftTex = canvasTexture(64, 256, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "rgba(255,244,214,0)");
+    g.addColorStop(0.24, "rgba(255,244,214,0.72)");
+    g.addColorStop(0.72, "rgba(255,236,190,0.3)");
+    g.addColorStop(1, "rgba(255,236,190,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  });
+
+  function shaftMaterial() {
+    return new THREE.MeshBasicMaterial({
+      map: spotShaftTex,
+      color: 0xffe9c4,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false
+    });
+  }
+
+  const shaftOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 1.42, 6.2, 22, 1, true), shaftMaterial());
+  shaftOuter.position.y = 3.12;
+  shaftOuter.renderOrder = 2;
+  danceSpot.add(shaftOuter);
+
+  const shaftInner = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.98, 6.1, 22, 1, true), shaftMaterial());
+  shaftInner.position.y = 3.08;
+  shaftInner.renderOrder = 2;
+  danceSpot.add(shaftInner);
+
+  const spotPool = new THREE.Mesh(
+    new THREE.CircleGeometry(1.55, 28),
+    new THREE.MeshBasicMaterial({
+      map: glowTex,
+      color: 0xffe6b8,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false
+    })
+  );
+  spotPool.rotation.x = -Math.PI / 2;
+  spotPool.position.y = 0.025;
+  spotPool.renderOrder = 2;
+  danceSpot.add(spotPool);
+
   const surpriseLight = addVisualSpot(4.6, 6.0, -215, new THREE.Vector3(4.6, 2.0, -219.2), { intensity: 160, distance: 20, angle: 0.45, penumbra: 0.9, color: 0xffd39a });
   addGlowSprite(4.6, 2.05, -219.9, 3.4, 0xffd0a0, 0.2);
   addGlowSprite(4.6, 1.75, -218.85, 2.3, 0xffe0b0, 0.12);
@@ -2034,6 +2170,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   let surpriseDancing = false;
   let surpriseTime = 0;
   let danceShake = 0;
+  let danceFx = 0;
 
   const finalRoomDecor = [finalHeading, finalSub, heart, halo, heartGlowWide, heartGlowCore];
   function setFinalRoomDecor(visible) {
@@ -2061,6 +2198,9 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     surpriseMode = false;
     surpriseDancing = false;
     danceShake = 0;
+    danceFx = 0;
+    danceSpot.visible = false;
+    laughGroup.visible = false;
     surpriseGroup.visible = false;
     surpriseGroup.scale.setScalar(0.001);
     surpriseGroup.position.set(4.6, 0, -219.2);
@@ -2774,6 +2914,43 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
         surpriseGroup.position.y *= 0.9;
         surpriseGroup.rotation.y *= 0.9;
       }
+    }
+
+    // Dance-party dressing. The captions float and pop on the dancer's
+    // beat; the light beam breathes with the same pulse. Both fade out
+    // when the dance stops, so the stage returns to normal.
+    const danceFxTarget = surpriseMode && surpriseDancing ? 1 : 0;
+    danceFx += (danceFxTarget - danceFx) * (reducedMotion ? 1 : 0.08);
+    if (danceFx < 0.002) danceFx = 0;
+
+    laughGroup.visible = danceFx > 0.002;
+    if (laughGroup.visible) {
+      const motion = reducedMotion ? 0 : 1;
+      // Tall phones have a narrow frame, so pull the captions inward and
+      // shrink them a little to keep every one inside the safe area.
+      const portraitLayout = camera.aspect < 0.85;
+      const xScale = portraitLayout ? 0.6 : 1;
+      const sizeScale = portraitLayout ? 0.72 : 1;
+      laughSprites.forEach((sprite) => {
+        const data = sprite.userData;
+        const lift = portraitLayout && data.baseY > 2.2 ? 0.16 : 0;
+        sprite.position.set(
+          data.baseX * xScale + Math.sin(time * 0.85 + data.phase * 1.7) * 0.06 * motion * xScale,
+          data.baseY + lift + Math.sin(time * 1.7 + data.phase) * 0.1 * motion,
+          data.baseZ
+        );
+        const pop = 1 + Math.abs(Math.sin(surpriseTime * 5 + data.phase)) * 0.14 * motion;
+        sprite.scale.set(data.width * pop * sizeScale, data.height * pop * sizeScale, 1);
+        sprite.material.opacity = (0.68 + Math.sin(time * 1.3 + data.phase) * 0.14 * motion) * danceFx;
+      });
+    }
+
+    danceSpot.visible = danceFx > 0.002;
+    if (danceSpot.visible) {
+      const beat = Math.abs(Math.sin(surpriseTime * 5));
+      shaftInner.material.opacity = (0.13 + beat * 0.05) * danceFx;
+      shaftOuter.material.opacity = (0.05 + beat * 0.02) * danceFx;
+      spotPool.material.opacity = (0.26 + beat * 0.08) * danceFx;
     }
 
     if (frameCallbacks.size) {

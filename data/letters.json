@@ -67,6 +67,66 @@
         "That's my panata. Yesterday, today, and after."
       ],
       "signoff": "Still choosing you,"
+    },
+    {
+      "id": "light",
+      "seal": "Open when you want to know what you changed",
+      "title": "The Day My World Got Brighter",
+      "subtitle": "A letter about what your existence did to me",
+      "body": [
+        "Before you, my days were fine. They were quiet and they were fine, and I didn't know they were missing anything. Then you happened, and suddenly there was something to look forward to on a random Tuesday.",
+        "I adore you. Not in the soft, polite way people say it — in the way where I notice when you walk into a room before I notice anything else. You brought color to a world I thought was already colorful. You made ordinary things feel like they were worth paying attention to: a song in the car, a meal we didn't plan, a message at 1 a.m. that just said hi.",
+        "You didn't just enter my life. You lit it up. And I hope you never underestimate how much of my world only started existing because you were in it."
+      ],
+      "signoff": "Still a little in awe of you,"
+    },
+    {
+      "id": "worth",
+      "seal": "Open on the days you don't feel like enough",
+      "title": "You Are Not a Question to Be Solved",
+      "subtitle": "A letter about how you should see yourself",
+      "body": [
+        "I need you to read this slowly, because I know your brain likes to argue. You are not a project. You are not something that needs fixing before it's allowed to be loved.",
+        "You should value yourself the way I value you: not for what you produce, not for how well you hold everything together, but because you are kind, thoughtful, funny, and so stubbornly good even when the world doesn't give that back to you. You deserve to be on your own list of people worth taking care of.",
+        "When you're being hard on yourself, borrow my view for a minute. From here, there's nothing to fix. There's just you, and you are enough on the days you do everything and on the days you can't get out of bed."
+      ],
+      "signoff": "Wishing you saw what I see,"
+    },
+    {
+      "id": "deserve",
+      "seal": "Open when good things feel undeserved",
+      "title": "Every Good Thing, and Then Some",
+      "subtitle": "A letter about what you deserve",
+      "body": [
+        "You give so much without keeping score. You check in when people go quiet. You remember the small things. You make room for everyone else, sometimes at your own expense. So let me say this plainly: you deserve every good thing that comes your way.",
+        "Not because you suffered enough to earn it. Not because you were kind enough to balance some cosmic ledger. You deserve good things because you are selfless in ways most people never notice, and kind in ways you don't even count as kindness.",
+        "So when something lovely happens to you, don't flinch. Don't look around for the catch. Open your hands, say thank you, and let yourself have it. If anyone has earned a soft landing, it is you."
+      ],
+      "signoff": "Rooting for every good thing,"
+    },
+    {
+      "id": "matter",
+      "seal": "Open when you feel small",
+      "title": "You Matter More Than You Know",
+      "subtitle": "A letter about the space you take up",
+      "body": [
+        "There are people who move through the world leaving no trace, and then there's you. You leave traces everywhere. In my routines. In my playlists. In the way I check my phone, in the jokes only we understand, in the version of me that only exists because you've been around.",
+        "You matter to me on the loud days and the quiet ones. You matter when you're at your best and when you're convinced you're not. Your presence changes the temperature of a room, and it changes my whole week.",
+        "I don't love you in spite of who you are. I love you exactly because of it. So on the days you feel small, remember that in my world you were never a small thing at all. You're the reason it feels like a home."
+      ],
+      "signoff": "You are not a small thing to me,"
+    },
+    {
+      "id": "thousand",
+      "seal": "Open when you need to hear it again",
+      "title": "A Thousand Reasons, and Still Not Enough",
+      "subtitle": "The letter I'll never finish",
+      "body": [
+        "I love every interaction I get with you. The way your face changes right before you laugh, the way you react when you see something you like, the tiny pause before you answer a question you're really thinking about. I love your eyes most of all — how honest they are, how they say things you don't say out loud, how I could look at them for hours and still find something new.",
+        "And that's just one reason. There's the way you say my name, the way you care, the way you turn a boring afternoon into an event. The way you argue with me and then make me laugh. The way you show up. I could write a whole letter for every reason and still have more to write.",
+        "But here's the truth: no amount of letters will ever do justice to how much I love you. I could give you a thousand reasons and it still would not be enough. So let this one stand as proof that I tried — and that I will keep trying for as long as you let me."
+      ],
+      "signoff": "With everything I have,"
     }
   ]
 }
