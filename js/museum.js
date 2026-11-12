@@ -2808,7 +2808,7 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
       const bounce = Math.sin(surpriseTime * 6);
       camera.position.set(
         baseCameraX + (sway * 0.02 + Math.sin(surpriseTime * 5 + 1.1) * 0.007) * danceShake,
-        baseCameraY + (bounce * 0.011 - pulse * 0.014) * danceShake,
+        baseCameraY + (bounce * 0.028 - pulse * 0.034) * danceShake,
         baseCameraZ - pulse * 0.008 * danceShake
       );
       camera.rotation.z = baseRoll + Math.sin(surpriseTime * 5 + 0.5) * 0.0035 * danceShake;
