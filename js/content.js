@@ -5,7 +5,7 @@
    these defaults.
    ============================================================ */
 
-const FILES = ["birthday", "gallery", "favorites", "memories", "letters", "surprises"];
+const FILES = ["birthday", "gallery", "favorites", "memories", "letters", "surprises", "exhibits"];
 
 const DEFAULTS = {
   birthday: {
@@ -157,6 +157,44 @@ const DEFAULTS = {
       letter: [],
       closing: "Happy Birthday, Love. I love you.",
       signoff: "Always, in every room,"
+    }
+  },
+  exhibits: {
+    botanical: {
+      kicker: "A small note, growing here",
+      title: "A Little Flower for You",
+      message: "I remember giving you these little flowers and how much you liked them. So I wanted to let them become part of this little world I made for you. A flower for the month you were born, and a small reminder that I hope life always gives you reasons to bloom.",
+      note: "The same little chrysanthemums, kept growing."
+    },
+    coffee: {
+      kicker: "A little pause",
+      title: "Your Little Coffee Break",
+      message: "A little something you enjoy, especially when you just want to slow down and take a break. I hope you always find time for the little things that make your days better.",
+      note: "No particular order. Just yours."
+    },
+    movie: {
+      kicker: "Two little tickets",
+      title: "The Movies Are Better With You",
+      message: "I still remember watching Spider-Man with you. Maybe it was just another movie date for you, but it became one of those experiences I keep looking back on. Thank you for taking me along, treating me, and making even an ordinary trip to the cinema something worth remembering.",
+      note: "One I keep looking back on."
+    },
+    compass: {
+      kicker: "A small brass compass",
+      title: "The Way You Lead Me",
+      message: "I love the way you hold my hand and lead me when I don't know where to go. Sometimes you know the way, and sometimes you simply want to take the lead. You might not realize it, but those moments mean so much to me. Even when I'm unfamiliar with a place, having you beside me makes the journey feel easier. Thank you for being there, especially on the days when I feel like I have nobody else.",
+      note: "Wherever we're going, I'm glad it's with you."
+    },
+    vinyl: {
+      kicker: "A small detail",
+      title: "A Little Corner for Your Music",
+      message: "A little corner for someone whose music you enjoy.",
+      note: "JENNIE · a quiet nod, nothing louder than that."
+    },
+    plaque: {
+      kicker: "12 DAYS · 13 HOURS",
+      title: "A LITTLE WORLD, MADE FOR YOU",
+      message: "From the first idea to the final detail, I spent these days building a little world with you in mind. Every little part was something I wanted to make special for you.",
+      note: "OF PLANNING, CREATING AND BUILDING · Every little detail was worth it."
     }
   }
 };

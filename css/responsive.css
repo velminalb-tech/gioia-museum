@@ -297,8 +297,18 @@
     height: 188vh;
   }
 
+  /* Rooms II–IV carry the extra exhibits, so they keep a little more
+     scroll room on phones too. */
+  .chapter--favorites {
+    height: 220vh;
+  }
+
   .chapter--memories {
-    height: 205vh;
+    height: 290vh;
+  }
+
+  .chapter--letters {
+    height: 230vh;
   }
 
   .chapter--final {

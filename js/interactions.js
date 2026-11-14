@@ -24,6 +24,7 @@ export function createInteractions(content, {
   const letters = content.letters?.letters || [];
   const surprises = content.surprises || {};
   const final = surprises.final || {};
+  const extras = content.exhibits || {};
 
   const cakeAudioPlayer = createYouTubeSound("0KUGkoL-VXA", {
     volume: 1,
@@ -172,6 +173,57 @@ export function createInteractions(content, {
       }))
     };
 
+    // New small exhibits reuse the same browse list instead of adding a
+    // second information interface.
+    if (extras.botanical) {
+      specs.favorites.unshift({
+        key: "extra-botanical",
+        label: extras.botanical.title,
+        meta: "Botanical note",
+        onSelect: () => openExtra("botanical")
+      });
+    }
+    if (extras.coffee) {
+      specs.favorites.push({
+        key: "extra-coffee",
+        label: extras.coffee.title,
+        meta: "A smaller exhibit",
+        onSelect: () => openExtra("coffee")
+      });
+    }
+    if (extras.movie) {
+      specs.memories.push({
+        key: "extra-movie",
+        label: extras.movie.title,
+        meta: "Two tickets",
+        onSelect: () => openExtra("movie")
+      });
+    }
+    if (extras.compass) {
+      specs.memories.push({
+        key: "extra-compass",
+        label: extras.compass.title,
+        meta: "A compass",
+        onSelect: () => openExtra("compass")
+      });
+    }
+    if (extras.plaque) {
+      specs.memories.push({
+        key: "extra-plaque",
+        label: extras.plaque.title,
+        meta: "A dedication",
+        onSelect: () => openExtra("plaque")
+      });
+    }
+    if (extras.vinyl) {
+      specs.letters.push({
+        key: "extra-vinyl",
+        label: extras.vinyl.title,
+        meta: "On vinyl",
+        onSelect: () => openExtra("vinyl")
+      });
+    }
+
     panels.forEach((panel) => {
       const list = panel.querySelector("[data-panel-index]");
       if (!list) return;
@@ -312,6 +364,19 @@ export function createInteractions(content, {
     });
   }
 
+  function openExtra(key) {
+    const extra = extras[key];
+    if (!extra) return;
+    ui.noteModal({
+      emoji: extra.emoji || "✦",
+      kicker: extra.kicker || "",
+      title: extra.title || "",
+      message: extra.message || "",
+      extra: extra.note ? `<p class="note-modal__aside">${escapeHtml(extra.note)}</p>` : "",
+      actions: [{ label: extra.button || "Close", variant: "btn--gold" }]
+    });
+  }
+
   function openCake() {
     const cake = surprises.cake || {};
     ui.noteModal({
@@ -427,6 +492,10 @@ export function createInteractions(content, {
     }
     if (payload.type === "letter") {
       openLetterAt(Number(payload.index) || 0);
+      return;
+    }
+    if (payload.type === "extra") {
+      openExtra(payload.key);
       return;
     }
     if (payload.type === "cake") {

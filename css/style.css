@@ -1273,16 +1273,18 @@ body.no-webgl #webgl {
   height: 235vh;
 }
 
+/* Rooms II–IV now hold extra exhibits, so they get more scroll room.
+   This adds viewing time without slowing or restyling the camera itself. */
 .chapter--favorites {
-  height: 210vh;
+  height: 250vh;
 }
 
 .chapter--memories {
-  height: 265vh;
+  height: 380vh;
 }
 
 .chapter--letters {
-  height: 220vh;
+  height: 280vh;
 }
 
 .chapter--celebration {

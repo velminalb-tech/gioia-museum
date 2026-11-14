@@ -596,6 +596,483 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   }
 
   /* ------------------------------------------------------------
+     Chrysanthemums · shared instanced parts
+     ------------------------------------------------------------ */
+  // Every bloom in the museum is drawn from three instanced meshes:
+  // heads, stems and leaves. The moving flower pool and the fixed
+  // bouquet on the botanical inscription share this geometry and these
+  // materials, so the whole motif costs only a handful of draw calls.
+
+  const flowerStemGeometry = new THREE.CylinderGeometry(1, 1.18, 1, 4, 1, true);
+  flowerStemGeometry.translate(0, 0.5, 0);
+  const flowerLeafGeometry = new THREE.PlaneGeometry(1, 1);
+  const flowerHeadMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.78,
+    metalness: 0.02,
+    // A soft self-lit ivory keeps the small blooms readable in the dark
+    // corridors without adding a single extra light.
+    emissive: 0x6b6152,
+    emissiveIntensity: 0.62
+  });
+  const flowerStemMaterial = new THREE.MeshStandardMaterial({
+    color: 0x496b3b,
+    roughness: 0.8,
+    metalness: 0.02,
+    emissive: 0x1d3414,
+    emissiveIntensity: 0.38
+  });
+  const flowerLeafMaterial = new THREE.MeshStandardMaterial({
+    color: 0x557a44,
+    roughness: 0.78,
+    metalness: 0.02,
+    side: THREE.DoubleSide,
+    emissive: 0x1d3414,
+    emissiveIntensity: 0.32
+  });
+
+  // Four blossom silhouettes share one palette and one set of instanced
+  // meshes per type. The museum still pays only a handful of draw calls,
+  // but the trail no longer reads as a single row of chrysanthemums.
+  const flowerDaisyGeometry = new THREE.TorusGeometry(0.66, 0.3, 5, 12);
+  // Tilt the ring off the floor so a low walking camera still reads petals
+  // rather than a thin horizontal edge.
+  flowerDaisyGeometry.rotateX(-Math.PI / 2 + 0.38);
+  const FLOWER_TYPES = [
+    {
+      // Pom / chrysanthemum: the original faceted round head.
+      geometry: new THREE.IcosahedronGeometry(1, 1),
+      palette: [0xf7f2e6, 0xf1e6d1, 0xe7d3a8, 0xe9cfc8],
+      weight: 0.34
+    },
+    {
+      // Rose: a low, faceted bud with blush and lavender tints.
+      geometry: new THREE.DodecahedronGeometry(1, 0),
+      palette: [0xe9cfc8, 0xf0c9a6, 0xcbb8d8, 0xf3ddd6],
+      weight: 0.24
+    },
+    {
+      // Daisy: a flat petal ring with a pale, airy feel.
+      geometry: flowerDaisyGeometry,
+      palette: [0xf7f2e6, 0xf1e6d1, 0xaec4d4, 0xe7d3a8],
+      weight: 0.22
+    },
+    {
+      // Tulip: a small open cup, warm and a little more saturated.
+      geometry: new THREE.CylinderGeometry(0.95, 0.5, 1.25, 7, 1, true),
+      palette: [0xf0c9a6, 0xcbb8d8, 0xe9cfc8, 0xe7d3a8],
+      weight: 0.2
+    }
+  ];
+
+  function flowerTypeForIndex(index) {
+    // Golden-ratio stepping spreads the types evenly through the pool
+    // instead of clustering every fourth blossom into the same shape.
+    const pick = (index * 0.61803398875) % 1;
+    let acc = 0;
+    for (let i = 0; i < FLOWER_TYPES.length; i += 1) {
+      acc += FLOWER_TYPES[i].weight;
+      if (pick < acc) return i;
+    }
+    return FLOWER_TYPES.length - 1;
+  }
+
+  function flowerTintForIndex(typeIndex, index) {
+    const palette = FLOWER_TYPES[typeIndex].palette;
+    const pick = Math.floor(((index * 0.754877666) % 1) * palette.length);
+    return palette[Math.min(palette.length - 1, pick)];
+  }
+
+  function createFlowerInstances(capacity, parent = scene) {
+    const headMeshes = FLOWER_TYPES.map(
+      (type) => new THREE.InstancedMesh(type.geometry, flowerHeadMaterial, capacity)
+    );
+    const stems = new THREE.InstancedMesh(flowerStemGeometry, flowerStemMaterial, capacity);
+    const leaves = new THREE.InstancedMesh(flowerLeafGeometry, flowerLeafMaterial, capacity);
+    headMeshes.forEach((heads) => {
+      heads.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      heads.frustumCulled = false;
+      heads.count = capacity;
+      parent.add(heads);
+    });
+    stems.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    leaves.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    stems.frustumCulled = false;
+    leaves.frustumCulled = false;
+    stems.count = capacity;
+    leaves.count = capacity;
+
+    const zeroDummy = new THREE.Object3D();
+    zeroDummy.scale.set(0, 0, 0);
+    zeroDummy.updateMatrix();
+    const tint = new THREE.Color();
+    for (let i = 0; i < capacity; i += 1) {
+      headMeshes.forEach((heads) => heads.setMatrixAt(i, zeroDummy.matrix));
+      stems.setMatrixAt(i, zeroDummy.matrix);
+      leaves.setMatrixAt(i, zeroDummy.matrix);
+      const typeIndex = flowerTypeForIndex(i);
+      tint.setHex(flowerTintForIndex(typeIndex, i));
+      headMeshes[typeIndex].setColorAt(i, tint);
+    }
+    headMeshes.forEach((heads) => {
+      heads.instanceMatrix.needsUpdate = true;
+      if (heads.instanceColor) heads.instanceColor.needsUpdate = true;
+    });
+    stems.instanceMatrix.needsUpdate = true;
+    leaves.instanceMatrix.needsUpdate = true;
+
+    parent.add(stems, leaves);
+    return { heads: headMeshes, stems, leaves, capacity };
+  }
+
+  function markFlowerInstances(instances) {
+    instances.heads.forEach((heads) => {
+      heads.instanceMatrix.needsUpdate = true;
+    });
+    instances.stems.instanceMatrix.needsUpdate = true;
+    instances.leaves.instanceMatrix.needsUpdate = true;
+  }
+
+  const flowerOffsets = [
+    { x: -0.13, z: 0.04, h: 0.5, r: 0.11, delay: 0 },
+    { x: 0.12, z: -0.06, h: 0.64, r: 0.125, delay: 0.14 },
+    { x: 0.03, z: 0.14, h: 0.4, r: 0.096, delay: 0.28 },
+    { x: -0.04, z: -0.12, h: 0.55, r: 0.105, delay: 0.4 }
+  ];
+  const FLOWER_HEADS_PER_CLUSTER = flowerOffsets.length;
+  const flowerDummy = new THREE.Object3D();
+
+  function setFlowerBloom(instances, index, baseX, baseZ, offset, amount, angle, scale = 1) {
+    const typeIndex = flowerTypeForIndex(index);
+    const headMesh = instances.heads[typeIndex];
+    if (amount <= 0.001) {
+      flowerDummy.position.set(0, 0, 0);
+      flowerDummy.rotation.set(0, 0, 0);
+      flowerDummy.scale.set(0, 0, 0);
+      flowerDummy.updateMatrix();
+      headMesh.setMatrixAt(index, flowerDummy.matrix);
+      instances.stems.setMatrixAt(index, flowerDummy.matrix);
+      instances.leaves.setMatrixAt(index, flowerDummy.matrix);
+      return;
+    }
+
+    const delay = offset.delay || 0;
+    const open = clamp((amount - delay) / Math.max(0.001, 1 - delay), 0, 1);
+    if (open <= 0.001) {
+      flowerDummy.position.set(0, 0, 0);
+      flowerDummy.rotation.set(0, 0, 0);
+      flowerDummy.scale.set(0, 0, 0);
+      flowerDummy.updateMatrix();
+      headMesh.setMatrixAt(index, flowerDummy.matrix);
+      instances.stems.setMatrixAt(index, flowerDummy.matrix);
+      instances.leaves.setMatrixAt(index, flowerDummy.matrix);
+      return;
+    }
+
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const bx = baseX + (offset.x * cos - offset.z * sin) * scale;
+    const bz = baseZ + (offset.x * sin + offset.z * cos) * scale;
+    const stemHeight = offset.h * scale * (0.18 + 0.82 * open);
+    const headRadius = offset.r * scale * (0.22 + 0.78 * open);
+    const bud = 1 - open;
+
+    flowerDummy.position.set(bx, 0.02, bz);
+    flowerDummy.rotation.set(0, 0, 0);
+    flowerDummy.scale.set(0.011, stemHeight, 0.011);
+    flowerDummy.updateMatrix();
+    instances.stems.setMatrixAt(index, flowerDummy.matrix);
+
+    flowerDummy.position.set(bx, 0.02 + stemHeight, bz);
+    flowerDummy.rotation.set(0, angle + index * 0.7, 0);
+    // A young bud is narrow and upright; it rounds out as the petals open.
+    flowerDummy.scale.set(
+      headRadius * (1 - 0.22 * bud),
+      headRadius * (0.86 + 0.14 * open + 0.24 * bud),
+      headRadius * (1 - 0.22 * bud)
+    );
+    flowerDummy.updateMatrix();
+    headMesh.setMatrixAt(index, flowerDummy.matrix);
+
+    flowerDummy.position.set(
+      bx + Math.cos(angle) * 0.055 * scale,
+      0.02 + stemHeight * 0.4,
+      bz + Math.sin(angle) * 0.055 * scale
+    );
+    flowerDummy.rotation.set(-0.95, angle + index * 1.3, 0.35);
+    flowerDummy.scale.set(0.15 * open * scale, 0.06 * open * scale, 1);
+    flowerDummy.updateMatrix();
+    instances.leaves.setMatrixAt(index, flowerDummy.matrix);
+  }
+
+  // The trail is a tiny pool of instanced clusters. Each bloom is placed
+  // once, a short way ahead on the floor, then eased open from bud to full
+  // flower. Slots are recycled only after the visitor has walked well past
+  // them, so a short backward scroll reveals the trail already made.
+  const FLOWER_POOL_MAX = isMobile ? 10 : 12;
+  const flowerPool = createFlowerInstances(FLOWER_POOL_MAX * FLOWER_HEADS_PER_CLUSTER);
+  const flowerSlots = [];
+  for (let i = 0; i < FLOWER_POOL_MAX; i += 1) {
+    flowerSlots.push({
+      active: false,
+      serial: -1,
+      baseX: 0,
+      baseZ: 0,
+      angle: 0,
+      scale: 1,
+      amount: 0,
+      target: 0,
+      dirty: false
+    });
+  }
+
+  // A bloom appears on the nearest part of the floor that is actually in
+  // view from eye height, so each step is seen rather than hidden beneath
+  // the camera. Small lateral drifts give a soft left/right footfall rhythm
+  // instead of a painted centre line.
+  const FLOWER_LOOK_AHEAD = isMobile ? 3.4 : 4.1;
+  const FLOWER_FIRST_Z = 3.2;      // first room begins near here
+  const FLOWER_LAST_Z = -183.2;    // Room V ends before this
+  const FLOWER_RETIRE_BEHIND = isMobile ? 8.5 : 10.5;
+  const FLOWER_ROOM_SIX_Z = -188;  // never bloom beyond this
+  const FLOWER_DUPLICATE_RADIUS = 0.72;
+
+  // Only the two large pieces of central furniture sit on the walking
+  // line. Wall frames and plinths are already several metres to the side.
+  const flowerFloorKeepOut = [
+    { z: -149.6, halfZ: 1.35, halfX: 2.5 }, // letters desk
+    { z: -176.0, halfZ: 2.35, halfX: 2.3 }  // cake table
+  ];
+
+  function flowerFloorBlocked(x, z) {
+    for (let i = 0; i < flowerFloorKeepOut.length; i += 1) {
+      const zone = flowerFloorKeepOut[i];
+      if (Math.abs(z - zone.z) < zone.halfZ && Math.abs(x) < zone.halfX) return true;
+    }
+    return false;
+  }
+
+  const flowerRand = seeded(4815);
+  let flowerFootSide = 1;
+  let flowerStride = 1.0;
+  let flowerTravel = 0;
+  let flowerLastCameraZ = null;
+  let flowerSerial = 0;
+
+  function nextFlowerStride() {
+    flowerStride = 0.92 + flowerRand() * 0.52;
+  }
+  nextFlowerStride();
+
+  function clearFlowerSlot(index, slot) {
+    for (let b = 0; b < FLOWER_HEADS_PER_CLUSTER; b += 1) {
+      setFlowerBloom(flowerPool, index * FLOWER_HEADS_PER_CLUSTER + b, 0, 0, flowerOffsets[b], 0, 0);
+    }
+    slot.active = false;
+    slot.serial = -1;
+    slot.amount = 0;
+    slot.target = 0;
+    slot.dirty = false;
+  }
+
+  // Instanced matrices default to identity, which would park every unused
+  // bloom at the world origin. Clear the pool once before the first frame.
+  flowerSlots.forEach((slot, index) => clearFlowerSlot(index, slot));
+  markFlowerInstances(flowerPool);
+
+  function activeFlowerCount() {
+    let count = 0;
+    for (let i = 0; i < FLOWER_POOL_MAX; i += 1) {
+      if (flowerSlots[i].active) count += 1;
+    }
+    return count;
+  }
+
+  function flowerSlotFor(cameraZ, activeCap) {
+    let free = -1;
+    let oldest = -1;
+    let oldestBehind = -Infinity;
+    for (let i = 0; i < FLOWER_POOL_MAX; i += 1) {
+      const slot = flowerSlots[i];
+      if (!slot.active) {
+        if (free < 0) free = i;
+        continue;
+      }
+      const behind = slot.baseZ - cameraZ;
+      if (behind > oldestBehind) {
+        oldestBehind = behind;
+        oldest = i;
+      }
+    }
+    if (free >= 0 && activeFlowerCount() < activeCap) return free;
+    // The pool is full, or trimmed for the lowest quality tier: reuse the
+    // bloom that is furthest behind the visitor.
+    if (oldest >= 0 && oldestBehind > 1.2) return oldest;
+    if (free >= 0) return free;
+    return -1;
+  }
+
+  function spawnFootBloom(cameraZ, activeCap) {
+    const jitter = (flowerRand() - 0.5) * 0.42;
+    const baseZ = cameraZ + flowerTravel - FLOWER_LOOK_AHEAD + jitter;
+    if (baseZ > FLOWER_FIRST_Z || baseZ < FLOWER_LAST_Z) return false;
+
+    flowerFootSide *= -1;
+    const drift = flowerRand();
+    let baseX = flowerFootSide * (0.22 + flowerRand() * 0.26);
+    baseX += (flowerRand() - 0.5) * 0.28;
+    if (drift < 0.16) baseX += flowerFootSide * (0.32 + flowerRand() * 0.36);
+    baseX = clamp(baseX, -1.12, 1.12);
+    if (flowerFloorBlocked(baseX, baseZ)) return false;
+
+    for (let i = 0; i < FLOWER_POOL_MAX; i += 1) {
+      const slot = flowerSlots[i];
+      if (!slot.active) continue;
+      const dx = slot.baseX - baseX;
+      const dz = slot.baseZ - baseZ;
+      if (dx * dx + dz * dz < FLOWER_DUPLICATE_RADIUS * FLOWER_DUPLICATE_RADIUS) return false;
+    }
+
+    const slotIndex = flowerSlotFor(cameraZ, activeCap);
+    if (slotIndex < 0) return false;
+    const slot = flowerSlots[slotIndex];
+    slot.active = true;
+    slot.serial = flowerSerial;
+    flowerSerial += 1;
+    slot.baseX = baseX;
+    slot.baseZ = baseZ;
+    slot.angle = flowerRand() * TAU;
+    slot.scale = 0.82 + flowerRand() * 0.26;
+    slot.amount = 0.03;
+    slot.target = 1;
+    slot.dirty = true;
+    return true;
+  }
+
+  function updateFlowers(delta) {
+    const cameraZ = camera.position.z;
+    const lowQuality = quality.level === 0;
+    const activeCap = lowQuality ? (isMobile ? 6 : 7) : FLOWER_POOL_MAX;
+
+    if (flowerLastCameraZ === null) {
+      flowerLastCameraZ = cameraZ;
+      return;
+    }
+    const travel = flowerLastCameraZ - cameraZ;
+    flowerLastCameraZ = cameraZ;
+
+    let dirty = false;
+
+    // A chapter jump is not a footstep. Clear the trail instead of
+    // stringing blooms across a teleport, and never bloom in Room VI.
+    if (Math.abs(travel) > 5.5 || cameraZ < FLOWER_ROOM_SIX_Z) {
+      flowerSlots.forEach((slot, index) => {
+        if (!slot.active) return;
+        clearFlowerSlot(index, slot);
+        dirty = true;
+      });
+      flowerTravel = 0;
+      if (dirty) {
+        markFlowerInstances(flowerPool);
+      }
+      return;
+    }
+
+    // Only real forward camera travel advances the trail. Pauses, easing
+    // settling and backward scrolling never create a duplicate bloom.
+    if (travel > 0.0004) {
+      flowerTravel += travel;
+      let spawnBudget = 3;
+      while (flowerTravel >= flowerStride && spawnBudget > 0) {
+        flowerTravel -= flowerStride;
+        spawnFootBloom(cameraZ, activeCap);
+        spawnBudget -= 1;
+        nextFlowerStride();
+      }
+      // A very fast flick should not leave a huge debt of unspawned steps.
+      if (flowerTravel > flowerStride * 2) flowerTravel = flowerStride;
+    } else if (travel < -0.0004) {
+      flowerTravel = 0;
+    }
+
+    // Trim the pool on the lowest tier, retiring the oldest blooms first.
+    if (lowQuality && activeFlowerCount() > activeCap) {
+      let excess = activeFlowerCount() - activeCap;
+      while (excess > 0) {
+        let candidate = -1;
+        let farthest = -Infinity;
+        for (let i = 0; i < FLOWER_POOL_MAX; i += 1) {
+          const slot = flowerSlots[i];
+          if (!slot.active || slot.target <= 0) continue;
+          const behind = slot.baseZ - cameraZ;
+          if (behind > farthest) {
+            farthest = behind;
+            candidate = i;
+          }
+        }
+        if (candidate < 0) break;
+        flowerSlots[candidate].target = 0;
+        excess -= 1;
+      }
+    }
+
+    flowerSlots.forEach((slot, index) => {
+      if (!slot.active) return;
+
+      // Recycled only once it is well out of view; a short look back still
+      // finds the flowers that were just made.
+      if (slot.baseZ - cameraZ > FLOWER_RETIRE_BEHIND) slot.target = 0;
+      if (slot.baseZ < FLOWER_LAST_Z - 0.6) slot.target = 0;
+
+      if (reducedMotion) {
+        if (slot.amount !== slot.target) {
+          slot.amount = slot.target;
+          slot.dirty = true;
+        }
+      } else {
+        // Opening is gentle and staggered per head; fading is quicker so a
+        // recycled slot is ready before the next footstep arrives.
+        const rate = slot.target < slot.amount ? 5.2 : 1.9;
+        const next = slot.amount + (slot.target - slot.amount) * Math.min(1, delta * rate);
+        if (Math.abs(next - slot.amount) > 1e-6) {
+          slot.amount = next;
+          slot.dirty = true;
+        }
+        if (Math.abs(slot.target - slot.amount) < 0.002) {
+          slot.amount = slot.target;
+        }
+      }
+
+      if (slot.amount <= 0.001 && slot.target <= 0.001) {
+        clearFlowerSlot(index, slot);
+        dirty = true;
+        return;
+      }
+
+      if (slot.dirty) {
+        for (let b = 0; b < FLOWER_HEADS_PER_CLUSTER; b += 1) {
+          setFlowerBloom(
+            flowerPool,
+            index * FLOWER_HEADS_PER_CLUSTER + b,
+            slot.baseX,
+            slot.baseZ,
+            flowerOffsets[b],
+            slot.amount,
+            slot.angle,
+            slot.scale
+          );
+        }
+        slot.dirty = false;
+        dirty = true;
+      }
+    });
+
+    if (dirty) {
+      markFlowerInstances(flowerPool);
+    }
+  }
+
+  /* ------------------------------------------------------------
      Architecture
      ------------------------------------------------------------ */
 
@@ -1076,6 +1553,103 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   scene.add(bench);
 
   /* ------------------------------------------------------------
+     I/II · A Little Flower for You
+     ------------------------------------------------------------ */
+  // The inscription sits just inside Room II, angled toward the aisle,
+  // with a small bouquet grown from the same instanced flower parts.
+
+  const botanicalExhibit = new THREE.Group();
+  botanicalExhibit.position.set(-3.4, 0, -61.8);
+  botanicalExhibit.rotation.y = 0.4;
+  scene.add(botanicalExhibit);
+
+  addBox(1.5, 0.18, 0.6, stone, 0, 0.09, 0, botanicalExhibit);
+  const botanicalBody = addBox(1.3, 0.75, 0.5, woodDark, 0, 0.555, 0, botanicalExhibit);
+  addBox(1.38, 0.05, 0.56, gold, 0, 0.955, 0, botanicalExhibit);
+  addBox(1.18, 0.66, 0.04, new THREE.MeshStandardMaterial({ color: 0x150f0b, roughness: 0.7, metalness: 0.12, emissive: 0x0c0605, emissiveIntensity: 0.3 }), 0, 0.58, 0.27, botanicalExhibit);
+  addBox(1.22, 0.03, 0.05, goldBright, 0, 0.92, 0.285, botanicalExhibit);
+  addBox(1.22, 0.03, 0.05, goldBright, 0, 0.24, 0.285, botanicalExhibit);
+  addBox(0.03, 0.71, 0.05, goldBright, -0.59, 0.58, 0.285, botanicalExhibit);
+  addBox(0.03, 0.71, 0.05, goldBright, 0.59, 0.58, 0.285, botanicalExhibit);
+
+  const botanicalTitle = textPlane(
+    textTexture(["A LITTLE FLOWER FOR YOU"], {
+      width: 1024,
+      height: 110,
+      color: "#e3ca95",
+      base: 40
+    }),
+    1.0,
+    0.11
+  );
+  botanicalTitle.position.set(0, 0.8, 0.295);
+  botanicalExhibit.add(botanicalTitle);
+
+  const botanicalBodyText = textPlane(
+    textTexture(
+      [
+        "I remember giving you these little flowers,",
+        "and how much you liked them. So I wanted",
+        "them to become part of this little world.",
+        "A flower for the month you were born —",
+        "and a small reminder that I hope life",
+        "always gives you reasons to bloom."
+      ],
+      {
+        width: 1024,
+        height: 400,
+        color: "#d7c4a8",
+        base: 26,
+        lineGap: 1.34
+      }
+    ),
+    1.04,
+    0.41
+  );
+  botanicalBodyText.position.set(0, 0.56, 0.295);
+  botanicalExhibit.add(botanicalBodyText);
+
+  const botanicalVase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.135, 0.2, 16),
+    new THREE.MeshStandardMaterial({ color: 0x9a7632, roughness: 0.4, metalness: 0.6, emissive: 0x2a1c06, emissiveIntensity: 0.3 })
+  );
+  botanicalVase.position.set(0.34, 1.02, 0.02);
+  botanicalExhibit.add(botanicalVase);
+  const botanicalVaseLip = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 6, 18), goldBright);
+  botanicalVaseLip.rotation.x = Math.PI / 2;
+  botanicalVaseLip.position.set(0.34, 1.12, 0.02);
+  botanicalExhibit.add(botanicalVaseLip);
+
+  const bouquetGroup = new THREE.Group();
+  bouquetGroup.position.set(0.34, 1.12, 0.02);
+  botanicalExhibit.add(bouquetGroup);
+  const bouquet = createFlowerInstances(FLOWER_HEADS_PER_CLUSTER, bouquetGroup);
+  for (let i = 0; i < FLOWER_HEADS_PER_CLUSTER; i += 1) {
+    setFlowerBloom(bouquet, i, 0, 0, flowerOffsets[i], 1, i * 1.9, 0.9);
+  }
+  markFlowerInstances(bouquet);
+
+  selectable(botanicalBody, { type: "extra", key: "botanical" });
+  selectable(botanicalVase, { type: "extra", key: "botanical" });
+
+  addLabelAnchor({
+    key: "extra-botanical",
+    room: "favorites",
+    kind: "object",
+    title: content.exhibits?.botanical?.title || "A Little Flower for You",
+    kicker: "A small note, growing here",
+    caption: "The flower I gave you, kept growing here.",
+    hint: "Read the inscription",
+    position: new THREE.Vector3(-3.4, 1.95, -61.8),
+    payload: { type: "extra", key: "botanical" },
+    maxDistance: 10,
+    priority: 9,
+    edge: true
+  });
+
+  addGlowSprite(-3.4, 1.55, -61.8, 1.8, 0xffce8c, 0.18);
+
+  /* ------------------------------------------------------------
      II · Little Things
      ------------------------------------------------------------ */
 
@@ -1290,6 +1864,125 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   });
 
   /* ------------------------------------------------------------
+     II · A smaller exhibit · iced coffee
+     ------------------------------------------------------------ */
+  // Kept deliberately smaller than the four food pedestals and set to
+  // the side, so it reads as a pause between the main displays rather
+  // than a fifth centrepiece.
+
+  const coffeeExhibit = new THREE.Group();
+  coffeeExhibit.position.set(3.3, 0, -82.6);
+  coffeeExhibit.rotation.y = -0.32;
+  scene.add(coffeeExhibit);
+
+  const coffeePlinth = addBox(1.0, 0.9, 1.0, stone, 0, 0.45, 0, coffeeExhibit);
+  addBox(1.1, 0.07, 1.1, gold, 0, 0.925, 0, coffeeExhibit);
+  addBox(0.82, 0.18, 0.82, woodDark, 0, 0.09, 0, coffeeExhibit);
+  addBox(0.74, 0.018, 0.74, goldBright, 0, 0.968, 0, coffeeExhibit);
+
+  const coffeeCup = new THREE.Group();
+  coffeeCup.position.set(0, 0.985, 0);
+  coffeeExhibit.add(coffeeCup);
+
+  const cupMaterial = new THREE.MeshStandardMaterial({
+    color: 0xdce8e6,
+    roughness: 0.16,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.24,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.155, 0.56, 20, 1, true), cupMaterial);
+  cup.position.y = 0.28;
+  coffeeCup.add(cup);
+  const cupBase = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.155, 0.022, 20), cupMaterial);
+  cupBase.position.y = 0.011;
+  coffeeCup.add(cupBase);
+
+  const coffeeLiquidMaterial = new THREE.MeshStandardMaterial({
+    color: 0x5a3420,
+    roughness: 0.38,
+    metalness: 0.08,
+    emissive: 0x2a1208,
+    emissiveIntensity: 0.35
+  });
+  const coffeeLiquid = new THREE.Mesh(new THREE.CylinderGeometry(0.178, 0.146, 0.4, 20), coffeeLiquidMaterial);
+  coffeeLiquid.position.y = 0.22;
+  coffeeCup.add(coffeeLiquid);
+
+  const iceMaterial = new THREE.MeshStandardMaterial({
+    color: 0xeaf4f0,
+    roughness: 0.18,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.46,
+    depthWrite: false
+  });
+  const iceGeometry = new THREE.BoxGeometry(0.085, 0.085, 0.085);
+  [
+    [-0.06, 0.4, 0.02, 0.3],
+    [0.05, 0.43, -0.04, -0.5],
+    [-0.02, 0.46, 0.05, 0.9],
+    [0.07, 0.37, 0.05, 0.2],
+    [-0.08, 0.34, -0.04, -0.2]
+  ].forEach(([x, y, z, rot]) => {
+    const ice = new THREE.Mesh(iceGeometry, iceMaterial);
+    ice.position.set(x, y, z);
+    ice.rotation.set(rot * 0.4, rot, rot * 0.3);
+    coffeeCup.add(ice);
+  });
+
+  const strawMaterial = new THREE.MeshStandardMaterial({ color: 0x18130f, roughness: 0.5, metalness: 0.1 });
+  const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.62, 8), strawMaterial);
+  straw.position.set(0.06, 0.45, 0.03);
+  straw.rotation.z = -0.18;
+  coffeeCup.add(straw);
+
+  // Condensation: one instanced draw call for a handful of small drops.
+  const dropGeometry = new THREE.SphereGeometry(0.012, 6, 4);
+  const dropMaterial = new THREE.MeshStandardMaterial({
+    color: 0xdff2ef,
+    roughness: 0.1,
+    metalness: 0.0,
+    transparent: true,
+    opacity: 0.36,
+    depthWrite: false
+  });
+  const dropMesh = new THREE.InstancedMesh(dropGeometry, dropMaterial, 8);
+  const dropDummy = new THREE.Object3D();
+  for (let i = 0; i < 8; i += 1) {
+    const angle = -1.2 + i * 0.42;
+    dropDummy.position.set(Math.cos(angle) * 0.182, 0.13 + (i % 4) * 0.075, Math.sin(angle) * 0.182);
+    dropDummy.scale.setScalar(0.7 + (i % 3) * 0.18);
+    dropDummy.updateMatrix();
+    dropMesh.setMatrixAt(i, dropDummy.matrix);
+  }
+  dropMesh.instanceMatrix.needsUpdate = true;
+  coffeeCup.add(dropMesh);
+
+  selectable(coffeePlinth, { type: "extra", key: "coffee" });
+  selectable(cup, { type: "extra", key: "coffee" });
+  selectable(coffeeLiquid, { type: "extra", key: "coffee" });
+
+  addLabelAnchor({
+    key: "extra-coffee",
+    room: "favorites",
+    kind: "object",
+    title: content.exhibits?.coffee?.title || "Your Little Coffee Break",
+    kicker: "A smaller exhibit",
+    caption: "Something you enjoy when you want to slow down.",
+    hint: "Open the note",
+    position: new THREE.Vector3(3.3, 2.05, -82.6),
+    payload: { type: "extra", key: "coffee" },
+    maxDistance: 11,
+    priority: 8,
+    edge: true
+  });
+
+  addGlowSprite(3.3, 1.75, -82.6, 1.7, 0xffc98c, 0.18);
+
+  /* ------------------------------------------------------------
      III · The Memory Hall
      ------------------------------------------------------------ */
 
@@ -1433,6 +2126,590 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
   wallPoolMesh.instanceMatrix.needsUpdate = true;
   wallPoolMesh.frustumCulled = false;
   scene.add(wallPoolMesh);
+
+  /* ------------------------------------------------------------
+     III · The Movies Are Better With You
+     ------------------------------------------------------------ */
+  // A pair of keepsake tickets. No posters, characters or studio art —
+  // just ivory paper, muted gold, and a quiet red/blue accent.
+
+  function ticketTexture(stub) {
+    return canvasTexture(512, 192, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const paper = ctx.createLinearGradient(0, 0, w, h);
+      paper.addColorStop(0, "#f4ead8");
+      paper.addColorStop(0.55, "#eadfc9");
+      paper.addColorStop(1, "#e2d5bd");
+      ctx.fillStyle = paper;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = "rgba(163,127,66,0.85)";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(12, 12, w - 24, h - 24);
+      ctx.strokeStyle = "rgba(163,127,66,0.34)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(22, 22, w - 44, h - 44);
+
+      // Perforated short edges.
+      ctx.globalCompositeOperation = "destination-out";
+      for (let y = 16; y < h - 8; y += 18) {
+        ctx.beginPath();
+        ctx.arc(13, y, 3.6, 0, TAU);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(w - 13, y, 3.6, 0, TAU);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = "source-over";
+
+      ctx.fillStyle = "#6d5631";
+      ctx.font = "500 20px Georgia, serif";
+      ctx.textAlign = "left";
+      ctx.fillText("GIOIA MUSEUM · PRIVATE SCREENING", 42, 54);
+
+      ctx.fillStyle = "#3b2c1a";
+      ctx.font = "700 48px Georgia, serif";
+      ctx.fillText("ADMIT ONE", 42, 112);
+
+      ctx.fillStyle = "#8a7048";
+      ctx.font = "400 19px Georgia, serif";
+      ctx.fillText(stub === 2 ? "KEEP THIS ONE" : "A MOVIE WITH YOU", 42, 148);
+
+      // A restrained red/blue nod to the film, never a logo.
+      ctx.fillStyle = "#8f3f3a";
+      ctx.fillRect(326, 36, 48, 8);
+      ctx.fillStyle = "#3d4e72";
+      ctx.fillRect(326, 50, 28, 8);
+
+      ctx.strokeStyle = "rgba(120,91,45,0.55)";
+      ctx.beginPath();
+      ctx.moveTo(382, 30);
+      ctx.lineTo(382, h - 30);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(430, h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = "#7a6136";
+      ctx.font = "600 17px Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.fillText(stub === 2 ? "ADMIT ONE" : "No. 1115", 0, 6);
+      ctx.restore();
+    });
+  }
+
+  const movieExhibit = new THREE.Group();
+  movieExhibit.position.set(3.1, 0, -110.5);
+  movieExhibit.rotation.y = -0.3;
+  scene.add(movieExhibit);
+
+  const moviePlinth = addBox(1.24, 1.04, 1.24, stone, 0, 0.52, 0, movieExhibit);
+  addBox(1.34, 0.08, 1.34, gold, 0, 1.08, 0, movieExhibit);
+  addBox(1.0, 0.18, 1.0, woodDark, 0, 0.09, 0, movieExhibit);
+  addBox(0.9, 0.018, 0.9, goldBright, 0, 1.126, 0, movieExhibit);
+
+  const ticketFloat = new THREE.Group();
+  ticketFloat.position.set(0, 1.42, 0);
+  movieExhibit.add(ticketFloat);
+
+  function buildTicket(rotation, position, stub) {
+    const group = new THREE.Group();
+    group.position.copy(position);
+    group.rotation.set(-0.06, rotation, rotation * 0.22);
+    const backing = addBox(0.84, 0.33, 0.014, ivory, 0, 0, 0, group);
+    backing.material = new THREE.MeshStandardMaterial({ color: 0xe9ddc7, roughness: 0.84, metalness: 0.02 });
+    const face = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.82, 0.31),
+      new THREE.MeshStandardMaterial({
+        map: ticketTexture(stub),
+        transparent: true,
+        alphaTest: 0.04,
+        side: THREE.DoubleSide,
+        roughness: 0.82,
+        metalness: 0.02,
+        emissive: 0x3a2b16,
+        emissiveIntensity: 0.16
+      })
+    );
+    face.position.z = 0.009;
+    group.add(face);
+    selectable(backing, { type: "extra", key: "movie" });
+    selectable(face, { type: "extra", key: "movie" });
+    return group;
+  }
+
+  ticketFloat.add(buildTicket(0.18, new THREE.Vector3(0.16, -0.02, -0.02), 2));
+  ticketFloat.add(buildTicket(-0.14, new THREE.Vector3(-0.15, 0.02, 0.03), 1));
+  bobbers.push({ group: ticketFloat, baseY: 1.42, phase: 0.7, sway: 0.012 });
+
+  selectable(moviePlinth, { type: "extra", key: "movie" });
+
+  addLabelAnchor({
+    key: "extra-movie",
+    room: "memories",
+    kind: "object",
+    title: content.exhibits?.movie?.title || "The Movies Are Better With You",
+    kicker: "Two little tickets",
+    caption: "A movie experience I keep looking back on.",
+    hint: "Open the keepsake",
+    position: new THREE.Vector3(3.1, 2.15, -110.5),
+    payload: { type: "extra", key: "movie" },
+    maxDistance: 12,
+    priority: 9,
+    edge: true
+  });
+
+  addVisualSpot(2.0, 5.3, -108.2, new THREE.Vector3(3.1, 1.5, -110.5), {
+    intensity: 85,
+    distance: 13,
+    angle: 0.3,
+    penumbra: 0.92
+  });
+  addGlowSprite(3.1, 1.65, -110.5, 2.0, 0xffd39a, 0.2);
+
+  /* ------------------------------------------------------------
+     III · The Way You Lead Me
+     ------------------------------------------------------------ */
+
+  function compassFaceTexture() {
+    return canvasTexture(512, 512, (ctx, w, h) => {
+      const cx = w / 2;
+      const cy = h / 2;
+      ctx.clearRect(0, 0, w, h);
+      const face = ctx.createRadialGradient(cx, cy * 0.8, 10, cx, cy, w * 0.5);
+      face.addColorStop(0, "#25303a");
+      face.addColorStop(0.7, "#151c23");
+      face.addColorStop(1, "#0d1217");
+      ctx.fillStyle = face;
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.48, 0, TAU);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(211,174,102,0.9)";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.455, 0, TAU);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(211,174,102,0.34)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.39, 0, TAU);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      for (let i = 0; i < 24; i += 1) {
+        const angle = (i / 24) * TAU;
+        const major = i % 6 === 0;
+        ctx.strokeStyle = major ? "rgba(240,217,164,0.9)" : "rgba(211,174,102,0.42)";
+        ctx.lineWidth = major ? 4 : 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * w * (major ? 0.34 : 0.37), Math.sin(angle) * w * (major ? 0.34 : 0.37));
+        ctx.lineTo(Math.cos(angle) * w * 0.4, Math.sin(angle) * w * 0.4);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(240,217,164,0.92)";
+      ctx.font = "600 38px Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("N", 0, -w * 0.29);
+      ctx.fillText("E", w * 0.29, 0);
+      ctx.fillText("S", 0, w * 0.29);
+      ctx.fillText("W", -w * 0.29, 0);
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.strokeStyle = "rgba(211,174,102,0.66)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i += 1) {
+        const angle = (i / 8) * TAU;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(angle) * w * 0.16, Math.sin(angle) * w * 0.16);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+
+  const compassExhibit = new THREE.Group();
+  compassExhibit.position.set(-3.1, 0, -122.0);
+  compassExhibit.rotation.y = 0.28;
+  scene.add(compassExhibit);
+
+  const compassPlinth = addBox(1.06, 0.96, 1.06, stone, 0, 0.48, 0, compassExhibit);
+  addBox(1.16, 0.08, 1.16, gold, 0, 1.0, 0, compassExhibit);
+  addBox(0.86, 0.18, 0.86, woodDark, 0, 0.09, 0, compassExhibit);
+  addBox(0.76, 0.018, 0.76, goldBright, 0, 1.046, 0, compassExhibit);
+
+  const compass = new THREE.Group();
+  compass.position.set(0, 1.06, 0);
+  compassExhibit.add(compass);
+
+  const brassMaterial = new THREE.MeshStandardMaterial({
+    color: 0x9a7632,
+    roughness: 0.34,
+    metalness: 0.78,
+    emissive: 0x2a1c06,
+    emissiveIntensity: 0.34
+  });
+  const compassBody = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.44, 0.13, 32), brassMaterial);
+  compassBody.position.y = 0.065;
+  compass.add(compassBody);
+  const compassFace = new THREE.Mesh(
+    new THREE.CircleGeometry(0.335, 40),
+    new THREE.MeshStandardMaterial({
+      map: compassFaceTexture(),
+      roughness: 0.48,
+      metalness: 0.22,
+      emissive: 0x1a1206,
+      emissiveIntensity: 0.2
+    })
+  );
+  compassFace.rotation.x = -Math.PI / 2;
+  compassFace.position.y = 0.136;
+  compass.add(compassFace);
+  const compassRim = new THREE.Mesh(new THREE.TorusGeometry(0.365, 0.024, 8, 40), brassMaterial);
+  compassRim.rotation.x = Math.PI / 2;
+  compassRim.position.y = 0.138;
+  compass.add(compassRim);
+
+  const compassNeedle = new THREE.Group();
+  compassNeedle.position.y = 0.148;
+  compass.add(compassNeedle);
+  const northNeedle = new THREE.Mesh(
+    new THREE.ConeGeometry(0.032, 0.26, 4),
+    new THREE.MeshStandardMaterial({ color: 0x9a4038, roughness: 0.38, metalness: 0.35, emissive: 0x3a0e0a, emissiveIntensity: 0.35 })
+  );
+  northNeedle.rotation.x = Math.PI / 2;
+  northNeedle.position.z = 0.13;
+  compassNeedle.add(northNeedle);
+  const southNeedle = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.24, 4), brassMaterial);
+  southNeedle.rotation.x = -Math.PI / 2;
+  southNeedle.position.z = -0.12;
+  compassNeedle.add(southNeedle);
+  const compassPivot = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), brassMaterial);
+  compassPivot.position.y = 0.01;
+  compassNeedle.add(compassPivot);
+
+  selectable(compassPlinth, { type: "extra", key: "compass" });
+  selectable(compassBody, { type: "extra", key: "compass" });
+  selectable(compassFace, { type: "extra", key: "compass" });
+
+  addLabelAnchor({
+    key: "extra-compass",
+    room: "memories",
+    kind: "object",
+    title: content.exhibits?.compass?.title || "The Way You Lead Me",
+    kicker: "A small brass compass",
+    caption: "A quiet thank-you for the hand that leads.",
+    hint: "Open the note",
+    position: new THREE.Vector3(-3.1, 2.2, -122.0),
+    payload: { type: "extra", key: "compass" },
+    maxDistance: 12,
+    priority: 9,
+    edge: true
+  });
+
+  addVisualSpot(-2.0, 5.2, -119.8, new THREE.Vector3(-3.1, 1.35, -122.0), {
+    intensity: 90,
+    distance: 13,
+    angle: 0.32,
+    penumbra: 0.92
+  });
+  addGlowSprite(-3.1, 1.55, -122.0, 2.1, 0xffcf8e, 0.22);
+
+  // A soft route on the floor, leading from the compass toward the
+  // dedication. It sits outside the carpet and never crosses the camera.
+  function pathGlowTexture() {
+    return canvasTexture(64, 512, (ctx, w, h) => {
+      const along = ctx.createLinearGradient(0, 0, 0, h);
+      along.addColorStop(0, "rgba(255,214,150,0)");
+      along.addColorStop(0.16, "rgba(255,214,150,0.7)");
+      along.addColorStop(0.82, "rgba(255,214,150,0.7)");
+      along.addColorStop(1, "rgba(255,214,150,0)");
+      ctx.fillStyle = along;
+      ctx.fillRect(0, 0, w, h);
+      const across = ctx.createLinearGradient(0, 0, w, 0);
+      across.addColorStop(0, "rgba(0,0,0,0)");
+      across.addColorStop(0.5, "rgba(255,255,255,1)");
+      across.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalCompositeOperation = "destination-in";
+      ctx.fillStyle = across;
+      ctx.fillRect(0, 0, w, h);
+    });
+  }
+
+  const compassPathMaterial = new THREE.MeshBasicMaterial({
+    map: pathGlowTexture(),
+    color: 0xffd08a,
+    transparent: true,
+    opacity: 0.34,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false
+  });
+  const compassPath = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 14.8), compassPathMaterial);
+  compassPath.rotation.x = -Math.PI / 2;
+  compassPath.position.set(-3.15, 0.028, -130.6);
+  scene.add(compassPath);
+
+  const compassPathPool = new THREE.InstancedMesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({
+      map: glowTex,
+      color: 0xffcf96,
+      transparent: true,
+      opacity: 0.16,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false
+    }),
+    6
+  );
+  const pathPoolDummy = new THREE.Object3D();
+  for (let i = 0; i < 6; i += 1) {
+    pathPoolDummy.position.set(-3.15, 0.032, -124.3 - i * 2.55);
+    pathPoolDummy.rotation.set(-Math.PI / 2, 0, 0);
+    pathPoolDummy.scale.set(0.9, 0.9, 1);
+    pathPoolDummy.updateMatrix();
+    compassPathPool.setMatrixAt(i, pathPoolDummy.matrix);
+  }
+  compassPathPool.instanceMatrix.needsUpdate = true;
+  scene.add(compassPathPool);
+
+  /* ------------------------------------------------------------
+     III/IV · A Little World, Made for You
+     ------------------------------------------------------------ */
+  // A permanent-looking dedication in the open transition, angled
+  // toward the incoming visitor and kept clear of the walking route.
+
+  const plaqueExhibit = new THREE.Group();
+  plaqueExhibit.position.set(-3.0, 0, -137.6);
+  plaqueExhibit.rotation.y = 0.36;
+  scene.add(plaqueExhibit);
+
+  addBox(1.5, 0.12, 0.62, woodDark, 0, 0.06, 0, plaqueExhibit);
+  [-0.55, 0.55].forEach((x) => {
+    addBox(0.1, 0.72, 0.26, woodDark, x, 0.36, 0, plaqueExhibit);
+  });
+  const plaquePanelMaterial = new THREE.MeshStandardMaterial({
+    color: 0x1b120d,
+    roughness: 0.62,
+    metalness: 0.18,
+    emissive: 0x120806,
+    emissiveIntensity: 0.35
+  });
+  const plaquePanel = addBox(2.5, 1.75, 0.16, plaquePanelMaterial, 0, 1.28, 0, plaqueExhibit);
+  addBox(2.62, 0.055, 0.2, gold, 0, 2.19, 0, plaqueExhibit);
+  addBox(2.62, 0.055, 0.2, gold, 0, 0.39, 0, plaqueExhibit);
+  addBox(0.055, 1.82, 0.2, gold, -1.28, 1.29, 0, plaqueExhibit);
+  addBox(0.055, 1.82, 0.2, gold, 1.28, 1.29, 0, plaqueExhibit);
+  addBox(1.9, 0.018, 0.02, goldBright, 0, 1.52, 0.09, plaqueExhibit);
+  addBox(1.9, 0.018, 0.02, goldBright, 0, 1.34, 0.09, plaqueExhibit);
+
+  const plaqueTitle = textPlane(
+    textTexture(["A LITTLE WORLD, MADE FOR YOU"], {
+      width: 1500,
+      height: 150,
+      color: "#e3ca95",
+      base: 42
+    }),
+    2.08,
+    0.21
+  );
+  plaqueTitle.position.set(0, 1.97, 0.09);
+  plaqueExhibit.add(plaqueTitle);
+
+  const plaqueDuration = textPlane(
+    textTexture(["12 DAYS · 13 HOURS"], {
+      width: 1400,
+      height: 220,
+      color: "#f6e6c2",
+      base: 76,
+      glow: "rgba(240,217,164,0.65)"
+    }),
+    1.95,
+    0.3
+  );
+  plaqueDuration.position.set(0, 1.67, 0.09);
+  plaqueExhibit.add(plaqueDuration);
+
+  const plaqueSubtitle = textPlane(
+    textTexture(["OF PLANNING, CREATING AND BUILDING"], {
+      width: 1500,
+      height: 150,
+      color: "#c9a45c",
+      base: 36
+    }),
+    2.1,
+    0.2
+  );
+  plaqueSubtitle.position.set(0, 1.4, 0.09);
+  plaqueExhibit.add(plaqueSubtitle);
+
+  const plaqueLine = textPlane(
+    textTexture(["Every little detail was worth it."], {
+      width: 1200,
+      height: 150,
+      color: "#d7c4a8",
+      base: 38
+    }),
+    1.72,
+    0.21
+  );
+  plaqueLine.position.set(0, 1.17, 0.09);
+  plaqueExhibit.add(plaqueLine);
+
+  selectable(plaquePanel, { type: "extra", key: "plaque" });
+  plaqueExhibit.children.forEach((child) => {
+    if (child.isMesh && child.geometry?.type === "BoxGeometry") {
+      selectable(child, { type: "extra", key: "plaque" });
+    }
+  });
+
+  addLabelAnchor({
+    key: "extra-plaque",
+    room: "memories",
+    kind: "object",
+    title: content.exhibits?.plaque?.title || "A LITTLE WORLD, MADE FOR YOU",
+    kicker: content.exhibits?.plaque?.kicker || "12 DAYS · 13 HOURS",
+    caption: "Every little detail was worth it.",
+    hint: "Read the dedication",
+    position: new THREE.Vector3(-3.0, 2.55, -137.6),
+    payload: { type: "extra", key: "plaque" },
+    maxDistance: 12,
+    priority: 11,
+    edge: true
+  });
+
+  addGlowSprite(-3.0, 1.85, -137.5, 2.4, 0xffce8c, 0.22);
+
+  /* ------------------------------------------------------------
+     IV · A little corner for her music
+     ------------------------------------------------------------ */
+
+  function vinylTexture() {
+    return canvasTexture(512, 512, (ctx, w, h) => {
+      const cx = w / 2;
+      const cy = h / 2;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#08070a";
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.48, 0, TAU);
+      ctx.fill();
+
+      for (let r = w * 0.17; r < w * 0.465; r += 3.2) {
+        const alpha = 0.05 + (Math.sin(r * 0.7) * 0.5 + 0.5) * 0.08;
+        ctx.strokeStyle = `rgba(178,152,108,${alpha})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, TAU);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "rgba(201,164,92,0.8)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.455, 0, TAU);
+      ctx.stroke();
+
+      const labelGradient = ctx.createRadialGradient(cx, cy, 2, cx, cy, w * 0.14);
+      labelGradient.addColorStop(0, "#2c2417");
+      labelGradient.addColorStop(1, "#16110a");
+      ctx.fillStyle = labelGradient;
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.14, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(211,174,102,0.85)";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.14, 0, TAU);
+      ctx.stroke();
+
+      ctx.fillStyle = "#e3ca95";
+      ctx.font = "600 30px Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("JENNIE", cx, cy - 6);
+      ctx.fillStyle = "#a58b5a";
+      ctx.font = "400 14px Georgia, serif";
+      ctx.fillText("A LITTLE CORNER", cx, cy + 24);
+
+      ctx.fillStyle = "#08070a";
+      ctx.beginPath();
+      ctx.arc(cx, cy, w * 0.018, 0, TAU);
+      ctx.fill();
+    });
+  }
+
+  const vinylExhibit = new THREE.Group();
+  vinylExhibit.position.set(3.2, 0, -143.2);
+  vinylExhibit.rotation.y = -0.42;
+  scene.add(vinylExhibit);
+
+  addBox(0.9, 0.9, 0.9, stone, 0, 0.45, 0, vinylExhibit);
+  addBox(1.0, 0.07, 1.0, gold, 0, 0.925, 0, vinylExhibit);
+  addBox(0.72, 0.18, 0.72, woodDark, 0, 0.09, 0, vinylExhibit);
+  addBox(0.64, 0.018, 0.64, goldBright, 0, 0.968, 0, vinylExhibit);
+
+  const vinylGroup = new THREE.Group();
+  vinylGroup.position.set(0, 1.42, 0);
+  vinylExhibit.add(vinylGroup);
+
+  addBox(0.5, 0.06, 0.18, woodDark, 0, -0.52, 0, vinylGroup);
+  [-0.24, 0.24].forEach((x) => {
+    addBox(0.03, 0.4, 0.03, gold, x, -0.31, 0, vinylGroup);
+  });
+
+  const vinylBacking = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.44, 0.44, 0.05, 40),
+    new THREE.MeshStandardMaterial({ color: 0x0c0a09, roughness: 0.62, metalness: 0.12 })
+  );
+  vinylBacking.rotation.x = Math.PI / 2;
+  vinylGroup.add(vinylBacking);
+
+  const vinylMap = vinylTexture();
+  const vinylRecord = new THREE.Mesh(
+    new THREE.CircleGeometry(0.42, 48),
+    new THREE.MeshStandardMaterial({
+      map: vinylMap,
+      emissiveMap: vinylMap,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.34,
+      roughness: 0.5,
+      metalness: 0.22,
+      side: THREE.DoubleSide
+    })
+  );
+  vinylRecord.position.z = 0.03;
+  vinylGroup.add(vinylRecord);
+
+  const vinylRim = new THREE.Mesh(new THREE.TorusGeometry(0.415, 0.012, 8, 48), gold);
+  vinylRim.position.z = 0.032;
+  vinylGroup.add(vinylRim);
+
+  selectable(vinylRecord, { type: "extra", key: "vinyl" });
+  selectable(vinylRim, { type: "extra", key: "vinyl" });
+  selectable(vinylBacking, { type: "extra", key: "vinyl" });
+
+  addLabelAnchor({
+    key: "extra-vinyl",
+    room: "letters",
+    kind: "object",
+    title: content.exhibits?.vinyl?.title || "A Little Corner for Your Music",
+    kicker: "On vinyl",
+    caption: "A little corner for someone whose music you enjoy.",
+    hint: "Open the note",
+    position: new THREE.Vector3(3.2, 2.25, -143.2),
+    payload: { type: "extra", key: "vinyl" },
+    maxDistance: 11,
+    priority: 8,
+    edge: true
+  });
+
+  addGlowSprite(3.2, 1.65, -143.2, 1.8, 0xffce8c, 0.18);
 
   /* ------------------------------------------------------------
      IV · Letters for You
@@ -2588,6 +3865,10 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     lanternList.forEach((item) => {
       item.halo.visible = !low;
     });
+    // Flowers remain at every tier; the lowest tier hides the small
+    // leaf planes and lets the pool thin itself out.
+    flowerPool.leaves.visible = !low;
+    bouquet.leaves.visible = !low;
     if (wallWashGroup) wallWashGroup.visible = true;
   };
   applyQualityExtras(quality.level);
@@ -2834,6 +4115,17 @@ export function createMuseumScene({ content, reducedMotion = false, onSelect = n
     if (lampGlow && !reducedMotion) {
       lampGlow.material.opacity = 0.55 + Math.sin(time * 2.2) * 0.1;
     }
+
+    // The compass needle drifts as if settling on a direction; the
+    // record turns just enough to catch the light.
+    if (!reducedMotion) {
+      compassNeedle.rotation.y = Math.sin(time * 0.22) * 0.72 + 0.32;
+      compassPathMaterial.opacity = 0.28 + Math.sin(time * 0.75) * 0.05;
+      compassPathPool.material.opacity = 0.13 + Math.sin(time * 0.75 + 0.6) * 0.025;
+      vinylRecord.rotation.z += delta * 0.08;
+    }
+
+    updateFlowers(delta);
 
     if (dust && !reducedMotion) {
       dust.rotation.y = Math.sin(time * 0.045) * 0.04;
